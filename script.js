@@ -93,6 +93,7 @@ async function login() {
     }
 
     try {
+         console.log("POST to:", `${BASE_URL}/api/auth`);
         const response = await fetch(`${BASE_URL}/api/auth`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
