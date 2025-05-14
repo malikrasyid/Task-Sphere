@@ -83,6 +83,7 @@ function toggleAuth() {
 }
 
 async function login() {
+    const action = "login";
     const email = document.getElementById("loginEmail").value;
     const password = document.getElementById("loginPassword").value; // Added password field
     
@@ -92,10 +93,10 @@ async function login() {
     }
 
     try {
-        const response = await fetch(`${BASE_URL}/api/auth?route=login`, {
+        const response = await fetch(`${BASE_URL}/api/auth`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ action, email, password })
         });
         const data = await response.json();
         if (response.ok) {
@@ -120,6 +121,7 @@ async function login() {
 }
 
 async function signUp() {
+    const action = "signup";
     const firstName = document.getElementById("signupFirstName").value;
     const lastName = document.getElementById("signupLastName").value;
     const email = document.getElementById("signupEmail").value;
@@ -136,10 +138,10 @@ async function signUp() {
     }
 
     try {
-        const response = await fetch(`${BASE_URL}/api/auth?route=signup`, {
+        const response = await fetch(`${BASE_URL}/api/auth`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ firstName, lastName, email, password })
+            body: JSON.stringify({ action, firstName, lastName, email, password })
         });
         const data = await response.json();
         if (response.ok) {
@@ -625,7 +627,7 @@ async function searchUsers(query) {
     }
 
     try {
-        const response = await fetch(`${BASE_URL}/api/users/search?query=${encodeURIComponent(query)}`, {
+        const response = await fetch(`${BASE_URL}/api/users?action=search&query=${encodeURIComponent(query)}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${sessionStorage.getItem("sessionToken")}`
@@ -848,7 +850,7 @@ async function deleteProject(projectId) {
     if (!confirm('Are you sure you want to delete this project?')) return;
 
     try {
-        const response = await fetch(`${BASE_URL}/api/projects?projectId${projectId}`, {
+        const response = await fetch(`${BASE_URL}/api/projects?projectId=${projectId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -1228,8 +1230,11 @@ async function renderProjectsAndTasks() {
 }
 
 async function fetchUserById(userId) {
+    const token = sessionStorage.getItem("sessionToken");
+
     try {
-        const res = await fetch(`${BASE_URL}/api/user?action=name&userId=${userId}`, {
+        const res = await fetch(`${BASE_URL}/api/users?action=name&userId=${encodeURIComponent(userId)}`, {
+            method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
