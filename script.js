@@ -1812,6 +1812,36 @@ function initializeDashboard() {
     });
 }
 
+function getAutoStatus(startDate, endDate) {
+    const now = new Date();
+
+    let start, end;
+    
+    // Handle Firestore Timestamp objects
+    if (startDate && typeof startDate.toDate === 'function') {
+        start = startDate.toDate();
+    } else {
+        start = startDate instanceof Date ? startDate : new Date(startDate);
+    }
+    
+    if (endDate && typeof endDate.toDate === 'function') {
+        end = endDate.toDate();
+    } else {
+        end = endDate instanceof Date ? endDate : new Date(endDate);
+    }
+    
+    // Verify dates are valid
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        console.error('Invalid date objects in getAutoStatus:', { start, end });
+        // Return a safe default if dates are invalid
+        return 'Not Started';
+    }
+    
+    if (now < start) return 'Not Started';
+    if (now >= start && now <= end) return 'Ongoing';
+    if (now > end) return 'Overdue';
+}
+
 // Project creation and rendering functions
 document.getElementById('projectForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1851,6 +1881,61 @@ document.getElementById('projectForm').addEventListener('submit', async (e) => {
     }
 });
 
+// Function to automatically update task statuses based on dates
+async function updateTaskStatuses() {
+    console.log('Checking for task status updates...');
+    const token = sessionStorage.getItem("sessionToken");
+    if (!token) return;
+    
+    try {
+        const projects = await fetchUserProjects();
+        if (!projects) return;
+        
+        let updatedCount = 0;
+        
+        for (const project of projects) {
+            const tasks = await fetchProjectTasks(project.projectId);
+            if (!tasks) continue;
+            
+            for (const task of tasks) {
+                // Skip tasks that are already marked as Done
+                if (task.status === 'Done') continue;
+                
+                // Get the auto-calculated status based on dates
+                const autoStatus = getAutoStatus(task.startDate, task.endDate);
+                
+                // If the status has changed, update it
+                if (task.status !== autoStatus) {
+                    console.log(`Updating task ${task.name} status from ${task.status} to ${autoStatus}`);
+                    
+                    const response = await fetch(`${BASE_URL}/api/projects/tasks?projectId=${project.projectId}&&taskId=${task.taskId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ status: autoStatus })
+                    });
+                    
+                    if (response.ok) {
+                        updatedCount++;
+                    }
+                }
+            }
+        }
+        
+        if (updatedCount > 0) {
+            console.log(`Updated ${updatedCount} task statuses`);
+            // Optionally show a toast notification
+            showToast('info', `Updated ${updatedCount} task statuses`);
+            // Refresh the UI
+            renderProjectsAndTasks();
+        }
+    } catch (error) {
+        console.error('Error updating task statuses:', error);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is already logged in
     const token = sessionStorage.getItem("sessionToken");
@@ -1860,6 +1945,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // User is logged in, show main section
         showMainSection();
         initWebSocket();
+        
+        // Run task status update when application loads
+        updateTaskStatuses();
+        
+        // Set up periodic task status updates (every 15 minutes)
+        setInterval(updateTaskStatuses, 15 * 60 * 1000);
     } else {
         // User is not logged in, show auth section
         document.getElementById('authSection').classList.remove('hidden');
@@ -1945,3 +2036,58 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set interval to check WebSocket status
     setInterval(updateConnectionStatus, 1000);
 });
+
+// Function to show toast notifications
+function showToast(type, message) {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'fixed bottom-4 left-4 z-50 flex flex-col gap-2';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    const toastId = 'toast-' + Date.now();
+    toast.id = toastId;
+    
+    // Set background color based on type
+    let bgColor = 'bg-gray-800';
+    if (type === 'success') bgColor = 'bg-green-600';
+    if (type === 'error') bgColor = 'bg-red-600';
+    if (type === 'info') bgColor = 'bg-blue-600';
+    if (type === 'warning') bgColor = 'bg-yellow-600';
+    
+    toast.className = `${bgColor} text-white px-4 py-2 rounded-lg shadow-lg flex items-center transform transition-all duration-300 ease-out translate-y-0 opacity-0`;
+    
+    // Toast content
+    toast.innerHTML = `
+        <div class="mr-2">
+            ${type === 'success' ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : ''}
+            ${type === 'error' ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>' : ''}
+            ${type === 'info' ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>' : ''}
+            ${type === 'warning' ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>' : ''}
+        </div>
+        <span>${message}</span>
+    `;
+    
+    // Add toast to container
+    toastContainer.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+        toast.classList.remove('opacity-0');
+    }, 10);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 3000);
+    
+    return toastId;
+}
