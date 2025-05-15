@@ -1867,8 +1867,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     renderNotifications();
-
-    renderProjectsAndTasks();
     
     document.getElementById('navDashboard').addEventListener('click', function (event) {
         event.preventDefault();
