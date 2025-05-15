@@ -7,8 +7,23 @@ let selectedUser = null;
 let debounceTimeout;
 let websocket;
 
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 // Initialize WebSocket connection
 function initWebSocket() {
+    const debouncedRenderProjectsAndTasks = debounce(renderProjectsAndTasks, 300);
+    const debouncedRenderCalendar = debounce(renderCalendar, 300);
+    
     if (websocket) {
         websocket.close();
     }
@@ -32,24 +47,34 @@ function initWebSocket() {
             const data = JSON.parse(event.data);
             console.log('WebSocket message received:', data);
             
+            let shouldRenderProjects = false;
+            let shouldRenderCalendar = false;
+
             // Handle different types of updates
             switch (data.type) {
                 case 'project_update':
-                    renderProjectsAndTasks();
+                        shouldRenderProjects = true;
                     break;
                 case 'task_update':
                     if (data.projectId) {
-                        renderProjectsAndTasks();
+                        shouldRenderProjects = true;
                     }
-                    // Also update calendar if tasks were changed
-                    if (!document.getElementById('calendarSection').classList.contains('hidden')) {
-                        renderCalendar();
+                    // Check if calendar view is visible
+                    shouldRenderCalendar = !document.getElementById('calendarSection').classList.contains('hidden');
+                    break;
+                case 'user_update':
+                    // This might affect user names displayed in projects/tasks
+                    shouldRenderProjects = true;
+                    break;
+                case 'comment_update':
+                    // Only update if the comment belongs to a displayed project
+                    if (data.projectId && data.taskId) {
+                        shouldRenderProjects = true;
                     }
                     break;
-                case 'member_update':
-                    if (data.projectId) {
-                        renderProjectsAndTasks();;
-                    }
+                case 'notification_update':
+                    // Handle notifications separately - might need its own render function
+                    renderNotifications();
                     break;
                 case 'session_expired':
                     // Handle session expiration
@@ -57,6 +82,14 @@ function initWebSocket() {
                     break;
                 default:
                     console.log('Unknown update type:', data.type);
+            }
+            // Only trigger renders once based on the flags
+            if (shouldRenderProjects) {
+                debouncedRenderProjectsAndTasks();
+            }
+            
+            if (shouldRenderCalendar) {
+                debouncedRenderCalendar();
             }
         } catch (error) {
             console.error('Error handling WebSocket message:', error);
@@ -93,7 +126,6 @@ async function login() {
     }
 
     try {
-         console.log("POST to:", `${BASE_URL}/api/auth`);
         const response = await fetch(`${BASE_URL}/api/auth`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -782,7 +814,7 @@ async function addMemberToProject() {
     const role = document.getElementById('memberRole').value;
 
     try {
-        const response = await fetch(`${BASE_URL}/api/projects/member?projectId=${projectId}`, {
+        const response = await fetch(`${BASE_URL}/api/projects/member.js?projectId=${projectId}`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -913,6 +945,7 @@ async function fetchProjectTasks(projectId) {
 
     try {
         const response = await fetch(`${BASE_URL}/api/projects/tasks?projectId=${projectId}`, {
+            method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -1064,7 +1097,7 @@ async function renderProjectsAndTasks() {
         const completedTasks = tasks.filter(task => task.status === 'Done').length;
         const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
 
-        const tasksHTML = await Promise.all(tasks.map(async task => {
+        const tasksHTMLArray = await Promise.all(tasks.map(async task => {
             // Fetch comments for each task
             const comments = await fetchTaskComments(project.projectId, task.taskId) || [];
             
@@ -1146,6 +1179,8 @@ async function renderProjectsAndTasks() {
             </div>
             `;
         }));
+        
+        const tasksHTML = tasksHTMLArray.join('');
 
         const projectElement = document.createElement('details');
         projectElement.classList.add('mb-6', 'bg-white', 'rounded-lg', 'shadow', 'overflow-hidden', 'border', 'border-gray-200');
