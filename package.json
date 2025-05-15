@@ -2,13 +2,7 @@
   "name": "task-sphere",
   "version": "1.0.0",
   "description": "Task management application with project, task, and calendar functionality",
-  "main": "index.js",
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
+  "main": "script.js",
   "keywords": [
     "task",
     "project",
