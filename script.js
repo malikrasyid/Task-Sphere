@@ -810,6 +810,7 @@ function formatDateUTC(dateStr) {
 async function addMemberToProject() {
     if (!selectedUser) return;
 
+    const action = "add";
     const projectId = document.getElementById('memberProjectId').value;
     const role = document.getElementById('memberRole').value;
 
@@ -821,6 +822,7 @@ async function addMemberToProject() {
                 'Authorization': `Bearer ${sessionStorage.getItem("sessionToken")}`
             },
             body: JSON.stringify({
+                action: action,
                 userId: selectedUser.userId,
                 role: role
             })
