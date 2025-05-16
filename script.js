@@ -17,12 +17,38 @@ projectsSocket.on('disconnect', () => {
     console.log('Disconnected from projects namespace');
 });
 
+// Helper function to update dashboard if it's visible
+function updateDashboardIfVisible() {
+    const dashboardSection = document.getElementById('dashboardSection');
+    if (dashboardSection && !dashboardSection.classList.contains('hidden')) {
+        renderDashboard();
+    }
+}
+
 projectsSocket.on('project_updated', (data) => {
-    console.log(data);
+    console.log('Project update received:', data);
+    // Refresh the UI based on the action
+    if (data.action === 'add' || data.action === 'delete' || data.action === 'update' || data.action === 'add_member') {
+        renderProjectsAndTasks();
+        showToast('info', `Project ${data.action === 'add' ? 'added' : 
+                              data.action === 'delete' ? 'deleted' : 
+                              data.action === 'add_member' ? 'member added' : 'updated'}`);
+        updateDashboardIfVisible();
+    }
 });
 
 projectsSocket.on('task_updated', (data) => {
-    console.log(data);
+    console.log('Task update received from projects namespace:', data);
+    // Refresh the UI based on the action
+    if (data.action === 'add' || data.action === 'delete' || data.status) {
+        renderProjectsAndTasks();
+        if (document.getElementById('calendarSection') && !document.getElementById('calendarSection').classList.contains('hidden')) {
+            renderCalendar();
+        }
+        showToast('info', `Task ${data.action === 'add' ? 'added' : 
+                             data.action === 'delete' ? 'deleted' : 'updated'}`);
+        updateDashboardIfVisible();
+    }
 });
 
 // Tasks socket events
@@ -35,24 +61,17 @@ tasksSocket.on('disconnect', () => {
 });
 
 tasksSocket.on('task_updated', (data) => {
-    console.log(data);
-});
-
-tasksSocket.on('comment_updated', (data) => {
-    console.log(data);
-});
-
-// Users socket events
-usersSocket.on('connect', () => {
-    console.log('Connected to users namespace');
-});
-
-usersSocket.on('disconnect', () => {
-    console.log('Disconnected from users namespace');
-});
-
-usersSocket.on('user_updated', (data) => {
-    console.log(data);
+    console.log('Task update received:', data);
+    // Refresh the UI based on the action
+    if (data.action === 'add' || data.action === 'delete' || data.status) {
+        renderProjectsAndTasks();
+        if (document.getElementById('calendarSection') && !document.getElementById('calendarSection').classList.contains('hidden')) {
+            renderCalendar();
+        }
+        showToast('info', `Task ${data.action === 'add' ? 'added' : 
+                             data.action === 'delete' ? 'deleted' : 'updated'}`);
+        updateDashboardIfVisible();
+    }
 });
 
 // Comments socket events
@@ -65,7 +84,33 @@ commentsSocket.on('disconnect', () => {
 });
 
 commentsSocket.on('comment_updated', (data) => {
-    console.log(data);
+    console.log('Comment update received:', data);
+    // Refresh the UI
+    if (data.action === 'add' || data.action === 'delete') {
+        renderProjectsAndTasks();
+        showToast('info', `Comment ${data.action === 'add' ? 'added' : 'deleted'}`);
+    }
+});
+
+// Users socket events
+usersSocket.on('connect', () => {
+    console.log('Connected to users namespace');
+});
+
+usersSocket.on('disconnect', () => {
+    console.log('Disconnected from users namespace');
+});
+
+usersSocket.on('user_updated', (data) => {
+    console.log('User update received:', data);
+    // If current user was updated, refresh profile
+    if (data.userId === sessionStorage.getItem("userId")) {
+        userProfile();
+    }
+    // Otherwise, refresh projects in case user is a team member
+    else {
+        renderProjectsAndTasks();
+    }
 });
 
 // Notifications socket events
@@ -78,7 +123,32 @@ notificationsSocket.on('disconnect', () => {
 });
 
 notificationsSocket.on('notification', (data) => {
-    console.log(data);
+    console.log('Notification received:', data);
+    // Show toast and refresh notifications
+    showToast('info', data.title);
+    renderNotifications();
+    
+    // Add the notification to the top of the list for instant feedback
+    const container = document.getElementById('recentActivity');
+    if (container) {
+        // Create new notification element
+        const notifElement = document.createElement('li');
+        notifElement.className = 'bg-white p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow border-l-4 border-blue-300';
+        notifElement.innerHTML = `
+            <div class="font-medium">${data.title}</div>
+            <div class="text-sm text-gray-600">${data.body}</div>
+            <div class="text-xs text-gray-500 mt-1">Just now</div>
+        `;
+        
+        // Add to the top of the container
+        if (container.firstChild) {
+            container.insertBefore(notifElement, container.firstChild);
+        } else {
+            container.appendChild(notifElement);
+        }
+    }
+    
+    updateDashboardIfVisible();
 });
 
 document.getElementById('mainSection').classList.add('hidden');
