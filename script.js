@@ -697,14 +697,24 @@ document.getElementById('addTaskForm').addEventListener('submit', async (e) => {
             tasksSocket.emit('join_task', taskData.taskId);
             commentsSocket.emit('join_comment_thread', taskData.taskId);
             
+            // Immediately update UI
             closeAddTaskModal();
+            showToast('success', 'Task added successfully');
+            renderProjectsAndTasks();
+            
+            // Update calendar if visible
+            if (document.getElementById('calendarSection') && !document.getElementById('calendarSection').classList.contains('hidden')) {
+                renderCalendar();
+            }
+            
+            updateDashboardIfVisible();
         } else {
             const data = await response.json();
-            alert(data.error || 'Error adding task');
+            showToast('error', data.error || 'Error adding task');
         }
     } catch (error) {
         console.error('Error adding task:', error);
-        alert('Error adding task');
+        showToast('error', 'Error adding task');
     }
 });
     
@@ -788,8 +798,8 @@ async function markTaskAsDone(projectId, taskId) {
                 'Task Completed',
                 `Task has been marked as Done`
             );
-            
-            // Opsional: refresh tampilan atau fetch ulang data
+
+            // Immediately update UI (fetchUpdateTask already does this)
             showToast('success', 'Task marked as done!');
         } else {
             throw new Error('Failed to update task status');
@@ -920,12 +930,17 @@ async function addMemberToProject() {
             memberRole: role
         });
         console.log(`Socket: Added member ${selectedUser.userId} to project ${projectId}`);
-        
+
+        // Immediately update UI
         closeAddMemberModal();
-        // Refresh project display
+        showToast('success', `Added ${selectedUser.firstName} ${selectedUser.lastName} to project`);
+        renderProjectsAndTasks();
+        
+        // Reset selectedUser
+        selectedUser = null;
     } catch (error) {
         console.error('Error adding member:', error);
-        alert('Failed to add member to project');
+        showToast('error', 'Failed to add member to project');
     }
 }
     
@@ -959,14 +974,23 @@ async function deleteTask(projectId, taskId) {
             });
             console.log(`Socket: Deleted task ${taskId} from project ${projectId}`);
             
-            alert('Task deleted successfully');
+            // Immediately update UI
+            showToast('success', 'Task deleted successfully');
+            renderProjectsAndTasks();
+            
+            // Update calendar if visible
+            if (document.getElementById('calendarSection') && !document.getElementById('calendarSection').classList.contains('hidden')) {
+                renderCalendar();
+            }
+            
+            updateDashboardIfVisible();
         } else {
             const data = await response.json();
-            alert('Error deleting task: ' + data.error);
+            showToast('error', 'Error deleting task: ' + data.error);
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Failed to delete task.');
+        showToast('error', 'Failed to delete task.');
     }
 }
 
@@ -983,7 +1007,6 @@ async function deleteProject(projectId) {
         });
         console.log('Deleting project:', projectId);
 
-
         if (response.ok) {
             projectsSocket.emit('project_updated', { 
                 projectId, 
@@ -991,14 +1014,17 @@ async function deleteProject(projectId) {
             });
             console.log(`Socket: Deleted project ${projectId}`);
             
-            alert('Project deleted successfully');
+            // Immediately update UI
+            showToast('success', 'Project deleted successfully');
+            renderProjectsAndTasks();
+            updateDashboardIfVisible();
         } else {
             const data = await response.json();
-            alert('Error deleting project: ' + data.error);
+            showToast('error', 'Error deleting project: ' + data.error);
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Failed to delete project.');
+        showToast('error', 'Failed to delete project.');
     }
 }
 
@@ -1152,8 +1178,12 @@ async function addComment(projectId, taskId) {
         });
         console.log(`Socket: Comment added to task ${taskId}`);
         
+        // Clear input field
         inputElement.value = '';
+        
+        // Immediately update UI
         showToast('success', 'Comment added successfully');
+        renderProjectsAndTasks();
     } catch (error) {
         console.error('Error adding comment:', error);
         showToast('error', 'Failed to add comment');
@@ -1190,7 +1220,9 @@ async function deleteComment(projectId, taskId, commentId) {
         });
         console.log(`Socket: Comment deleted from task ${taskId}`);
         
+        // Immediately update UI
         showToast('success', 'Comment deleted successfully');
+        renderProjectsAndTasks();
     } catch (error) {
         console.error('Error deleting comment:', error);
         showToast('error', 'Failed to delete comment');
@@ -2031,8 +2063,6 @@ document.getElementById('projectForm').addEventListener('submit', async (e) => {
             throw new Error('Failed to create project');
         }
         
-        closeCreateProjectModal();
-        
         // Emit to Socket.io about the new project
         projectsSocket.emit('project_updated', { 
             projectId: projectData.projectId, 
@@ -2040,9 +2070,15 @@ document.getElementById('projectForm').addEventListener('submit', async (e) => {
             project: projectData
         });
         console.log(`Socket: Created new project ${projectData.projectId}`);
+        
+        // Immediately update UI
+        closeCreateProjectModal();
+        showToast('success', 'Project created successfully');
+        renderProjectsAndTasks();
+        updateDashboardIfVisible();
     } catch (error) {
         console.error('Error creating project:', error);
-        alert('Failed to create project. Please try again.');
+        showToast('error', 'Failed to create project. Please try again.');
     }
 });
 
@@ -2325,12 +2361,19 @@ async function fetchUpdateProject(projectId, updateData) {
             // Call Socket.io function after successful API call
             projectsSocket.emit('project_updated', { projectId, ...updateData });
             console.log(`API and Socket: Updated project ${projectId}`);
+            
+            // Immediately update UI for the client that made the change
+            showToast('success', 'Project updated successfully');
+            renderProjectsAndTasks();
+            updateDashboardIfVisible();
+            
             return await response.json();
         } else {
             throw new Error('Failed to update project');
         }
     } catch (error) {
         console.error('Error updating project:', error);
+        showToast('error', 'Failed to update project');
         return null;
     }
 }
@@ -2354,12 +2397,25 @@ async function fetchUpdateTask(projectId, taskId, updateData) {
             // Call Socket.io function after successful API call
             tasksSocket.emit('task_updated', { projectId, taskId, ...updateData });
             console.log(`API and Socket: Updated task ${taskId} in project ${projectId}`);
+            
+            // Immediately update UI for the client that made the change
+            showToast('success', 'Task updated successfully');
+            renderProjectsAndTasks();
+            
+            // Update calendar if visible
+            if (document.getElementById('calendarSection') && !document.getElementById('calendarSection').classList.contains('hidden')) {
+                renderCalendar();
+            }
+            
+            updateDashboardIfVisible();
+            
             return await response.json();
         } else {
             throw new Error('Failed to update task');
         }
     } catch (error) {
         console.error('Error updating task:', error);
+        showToast('error', 'Failed to update task');
         return null;
     }
 }
@@ -2384,12 +2440,18 @@ async function fetchUpdateUserProfile(userData) {
             // Call Socket.io function after successful API call
             usersSocket.emit('user_updated', { userId, ...userData });
             console.log(`API and Socket: Updated user profile for ${userId}`);
+            
+            // Immediately update UI for the client that made the change
+            showToast('success', 'Profile updated successfully');
+            userProfile(); // Update user profile display
+            
             return await response.json();
         } else {
             throw new Error('Failed to update user profile');
         }
     } catch (error) {
         console.error('Error updating user profile:', error);
+        showToast('error', 'Failed to update profile');
         return null;
     }
 }
