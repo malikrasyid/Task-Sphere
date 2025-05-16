@@ -1,114 +1,91 @@
 const BASE_URL = "https://task-sphere-pi.vercel.app";
 const WS_URL = "wss://websocket-task-sphere-production.up.railway.app";
 
+const SERVER_URL = 'http://localhost:8080';
+const projectsSocket = io(`${SERVER_URL}/projects`);
+const tasksSocket = io(`${SERVER_URL}/tasks`);
+const usersSocket = io(`${SERVER_URL}/users`);
+const commentsSocket = io(`${SERVER_URL}/comments`);
+const notificationsSocket = io(`${SERVER_URL}/notifications`);
+
+// Projects socket events
+projectsSocket.on('connect', () => {
+    console.log('Connected to projects namespace');
+});
+
+projectsSocket.on('disconnect', () => {
+    console.log('Disconnected from projects namespace');
+});
+
+projectsSocket.on('project_updated', (data) => {
+    console.log(data);
+});
+
+projectsSocket.on('task_updated', (data) => {
+    console.log(data);
+});
+
+// Tasks socket events
+tasksSocket.on('connect', () => {
+    console.log('Connected to tasks namespace');
+});
+
+tasksSocket.on('disconnect', () => {
+    console.log('Disconnected from tasks namespace');
+});
+
+tasksSocket.on('task_updated', (data) => {
+    console.log(data);
+});
+
+tasksSocket.on('comment_updated', (data) => {
+    console.log(data);
+});
+
+// Users socket events
+usersSocket.on('connect', () => {
+    console.log('Connected to users namespace');
+});
+
+usersSocket.on('disconnect', () => {
+    console.log('Disconnected from users namespace');
+});
+
+usersSocket.on('user_updated', (data) => {
+    console.log(data);
+});
+
+// Comments socket events
+commentsSocket.on('connect', () => {
+    console.log('Connected to comments namespace');
+});
+
+commentsSocket.on('disconnect', () => {
+    console.log('Disconnected from comments namespace');
+});
+
+commentsSocket.on('comment_updated', (data) => {
+    console.log(data);
+});
+
+// Notifications socket events
+notificationsSocket.on('connect', () => {
+    console.log('Connected to notifications namespace');
+});
+
+notificationsSocket.on('disconnect', () => {
+    console.log('Disconnected from notifications namespace');
+});
+
+notificationsSocket.on('notification', (data) => {
+    console.log(data);
+});
+
 document.getElementById('mainSection').classList.add('hidden');
          
 let selectedUser = null;
 let debounceTimeout;
 let websocket;
-
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Initialize WebSocket connection
-function initWebSocket() {
-    const debouncedRenderProjectsAndTasks = debounce(renderProjectsAndTasks, 300);
-    const debouncedRenderCalendar = debounce(renderCalendar, 300);
-    
-    if (websocket) {
-        websocket.close();
-    }
-
-    websocket = new WebSocket(WS_URL);
-    
-    websocket.onopen = () => {
-        console.log('WebSocket connection established');
-        // Send user ID to identify this connection
-        const userId = sessionStorage.getItem('userId');
-        if (userId) {
-            websocket.send(JSON.stringify({
-                type: 'identify',
-                userId: userId
-            }));
-        }
-    };
-    
-    websocket.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            console.log('WebSocket message received:', data);
-            
-            let shouldRenderProjects = false;
-            let shouldRenderCalendar = false;
-
-            // Handle different types of updates
-            switch (data.type) {
-                case 'project_update':
-                        shouldRenderProjects = true;
-                    break;
-                case 'task_update':
-                    if (data.projectId) {
-                        shouldRenderProjects = true;
-                    }
-                    // Check if calendar view is visible
-                    shouldRenderCalendar = !document.getElementById('calendarSection').classList.contains('hidden');
-                    break;
-                case 'user_update':
-                    // This might affect user names displayed in projects/tasks
-                    shouldRenderProjects = true;
-                    break;
-                case 'comment_update':
-                    // Only update if the comment belongs to a displayed project
-                    if (data.projectId && data.taskId) {
-                        shouldRenderProjects = true;
-                    }
-                    break;
-                case 'notification_update':
-                    // Handle notifications separately - might need its own render function
-                    renderNotifications();
-                    break;
-                case 'session_expired':
-                    // Handle session expiration
-                    handleSessionExpired();
-                    break;
-                default:
-                    console.log('Unknown update type:', data.type);
-            }
-            // Only trigger renders once based on the flags
-            if (shouldRenderProjects) {
-                debouncedRenderProjectsAndTasks();
-            }
-            
-            if (shouldRenderCalendar) {
-                debouncedRenderCalendar();
-            }
-        } catch (error) {
-            console.error('Error handling WebSocket message:', error);
-        }
-    };
-    
-    websocket.onclose = (event) => {
-        console.log('WebSocket connection closed:', event.code, event.reason);
-        // Try to reconnect after a delay
-        setTimeout(() => {
-            console.log('Attempting to reconnect WebSocket...');
-            initWebSocket();
-        }, 5000);
-    };
-    
-    websocket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-    };
-}
 
 function toggleAuth() {
     document.getElementById('loginForm').classList.toggle('hidden');
@@ -139,17 +116,17 @@ async function login() {
             sessionStorage.setItem("userName", data.name);
             sessionStorage.setItem("userEmail", data.email || email);
 
-            alert("Login sukses");
+            showToast('success', "Login sukses");
             showMainSection();
-            initWebSocket();
+            initializeSocketIO(); // Initialize Socket.IO connections
 
             renderProjectsAndTasks();
         } else {
-            alert(data.error || "Login failed");
+            showToast('error', data.error || "Login failed");
         }
     } catch (error) {
         console.error("Login failed:", error);
-        alert("Login failed. Please check your connection and try again.");
+        showToast('error', "Login failed. Please check your connection and try again.");
     }
 }
 
@@ -183,7 +160,6 @@ async function signUp() {
             sessionStorage.setItem("userEmail", email);
             
             showMainSection();
-            initWebSocket();
         } else {
             alert(data.error  || "Signup failed");
         }
@@ -436,7 +412,7 @@ async function renderCalendar() {
                                     <div class="flex-shrink-0 mt-1 mr-3">
                                         <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2H9a2 2 0 00-2 2" />
                                         </svg>
                                     </div>
                                     <div>
@@ -620,6 +596,19 @@ document.getElementById('addTaskForm').addEventListener('submit', async (e) => {
         }
 
         if (response.ok) {
+            // Emit to Socket.io about the new task
+            tasksSocket.emit('task_updated', { 
+                projectId, 
+                taskId: taskData.taskId, 
+                action: 'add',
+                task: taskData
+            });
+            console.log(`Socket: New task added to project ${projectId}`);
+            
+            // Also join task channel for real-time updates
+            tasksSocket.emit('join_task', taskData.taskId);
+            commentsSocket.emit('join_comment_thread', taskData.taskId);
+            
             closeAddTaskModal();
             await renderProjectsAndTasks();
         } else {
@@ -702,26 +691,26 @@ function renderSearchResults(users) {
 
 async function markTaskAsDone(projectId, taskId) {
     try {
-        const response = await fetch(`${BASE_URL}/api/projects/tasks?projectId=${projectId}&&taskId=${taskId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${sessionStorage.getItem("sessionToken")}`
-            },
-            body: JSON.stringify({ status: 'Done' })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to update task status');
+        const result = await fetchUpdateTask(projectId, taskId, { status: 'Done' });
+        
+        if (result) {
+            // Send notification
+            const userId = sessionStorage.getItem("userId");
+            await fetchSendNotification(
+                userId,
+                'Task Completed',
+                `Task has been marked as Done`
+            );
+            
+            // Opsional: refresh tampilan atau fetch ulang data
+            showToast('success', 'Task marked as done!');
+            renderProjectsAndTasks();
+        } else {
+            throw new Error('Failed to update task status');
         }
-
-        // Opsional: refresh tampilan atau fetch ulang data
-        alert('Task marked as done!');
-        renderProjectsAndTasks();
     } catch (error) {
         console.error('Error marking task as done:', error);
-        alert('Failed to mark task as done');
+        showToast('error', 'Failed to mark task as done');
     }
 }
 
@@ -836,6 +825,16 @@ async function addMemberToProject() {
         
         if (!response.ok) throw new Error('Failed to add member');
 
+        // Emit Socket.io event to notify other users about the new team member
+        projectsSocket.emit('project_updated', { 
+            projectId, 
+            action: 'add_member',
+            memberId: selectedUser.userId,
+            memberName: `${selectedUser.firstName} ${selectedUser.lastName}`,
+            memberRole: role
+        });
+        console.log(`Socket: Added member ${selectedUser.userId} to project ${projectId}`);
+        
         closeAddMemberModal();
         // Refresh project display
         await renderProjectsAndTasks();
@@ -868,6 +867,13 @@ async function deleteTask(projectId, taskId) {
         console.log('Deleting task from project:', projectId, taskId);
 
         if (response.ok) {
+            tasksSocket.emit('task_updated', { 
+                projectId, 
+                taskId, 
+                action: 'delete'
+            });
+            console.log(`Socket: Deleted task ${taskId} from project ${projectId}`);
+            
             alert('Task deleted successfully');
             await renderProjectsAndTasks();
         } else {
@@ -895,6 +901,12 @@ async function deleteProject(projectId) {
 
 
         if (response.ok) {
+            projectsSocket.emit('project_updated', { 
+                projectId, 
+                action: 'delete'
+            });
+            console.log(`Socket: Deleted project ${projectId}`);
+            
             alert('Project deleted successfully');
             await renderProjectsAndTasks();
         } else {
@@ -936,7 +948,17 @@ async function fetchUserProjects() {
         }
 
         const data = await response.json();
-        return data.projects;
+        const projects = data.projects;
+        
+        // Join Socket.io channels for each project
+        if (projects && projects.length > 0) {
+            projects.forEach(project => {
+                projectsSocket.emit('join_project', project.projectId);
+                console.log(`Socket: Joined project channel: ${project.projectId}`);
+            });
+        }
+        
+        return projects;
     } catch (error) {
         console.error('Error fetching projects:', error);
     }
@@ -966,6 +988,15 @@ async function fetchProjectTasks(projectId) {
             endDate: task.endDate ? new Date(task.endDate._seconds * 1000).toISOString() : null
         }));
         
+        // Join Socket.io channels for each task
+        if (tasksWithStringDates && tasksWithStringDates.length > 0) {
+            tasksWithStringDates.forEach(task => {
+                tasksSocket.emit('join_task', task.taskId);
+                commentsSocket.emit('join_comment_thread', task.taskId);
+                console.log(`Socket: Joined task and comment channels for task: ${task.taskId}`);
+            });
+        }
+        
         return tasksWithStringDates;
     } catch (error) {
         console.error('Error fetching tasks:', error);
@@ -976,6 +1007,10 @@ async function fetchTaskComments(projectId, taskId) {
     const token = sessionStorage.getItem("sessionToken");
 
     try {
+        // Join comment thread channel for this task
+        commentsSocket.emit('join_comment_thread', taskId);
+        console.log(`Socket: Joined comment thread for task ${taskId}`);
+        
         const response = await fetch(`${BASE_URL}/api/projects/tasks/comments?projectId=${projectId}&&taskId=${taskId}`, {
             method: 'GET',
             headers: {
@@ -1021,6 +1056,19 @@ async function addComment(projectId, taskId) {
             throw new Error('Failed to add comment');
         }
         
+        const result = await response.json();
+        
+        // Emit to Socket.io about the new comment
+        commentsSocket.emit('comment_updated', {
+            projectId,
+            taskId,
+            commentId: result.commentId,
+            message,
+            userId: sessionStorage.getItem("userId"),
+            action: 'add'
+        });
+        console.log(`Socket: Comment added to task ${taskId}`);
+        
         inputElement.value = '';
         await renderProjectsAndTasks(); // Refresh the UI
         showToast('success', 'Comment added successfully');
@@ -1049,6 +1097,16 @@ async function deleteComment(projectId, taskId, commentId) {
         if (!response.ok) {
             throw new Error('Failed to delete comment');
         }
+        
+        // Emit to Socket.io about the deleted comment
+        commentsSocket.emit('comment_updated', {
+            projectId,
+            taskId,
+            commentId,
+            userId: sessionStorage.getItem("userId"),
+            action: 'delete'
+        });
+        console.log(`Socket: Comment deleted from task ${taskId}`);
         
         await renderProjectsAndTasks();
         showToast('success', 'Comment deleted successfully');
@@ -1205,7 +1263,7 @@ async function renderProjectsAndTasks() {
                 <button onclick="deleteProject('${project.projectId}'); event.stopPropagation();" 
                     class="ml-4 text-gray-400 hover:text-red-500 transition-colors">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v.01a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v.01a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path>
                     </svg>
                 </button>
             </summary>
@@ -1328,6 +1386,13 @@ async function markNotificationAsRead(notificationId) {
             throw new Error('Failed to mark notification as read');
         }
         
+        // Emit to Socket.io about the read notification
+        notificationsSocket.emit('notification_updated', {
+            notificationId,
+            userId: sessionStorage.getItem("userId"),
+            action: 'read'
+        });
+        
         // Refresh notifications in UI
         await renderNotifications();
         return true;
@@ -1357,6 +1422,11 @@ async function markAllNotificationsAsRead() {
         const data = await response.json();
         showToast('success', `Marked ${data.count} notifications as read`);
         
+        // Emit to Socket.io about all notifications being read
+        notificationsSocket.emit('notifications_all_read', {
+            userId: sessionStorage.getItem("userId")
+        });
+        
         // Refresh notifications in UI
         await renderNotifications();
         return true;
@@ -1377,6 +1447,13 @@ async function renderNotifications() {
     notificationsContainer.innerHTML = '<div class="text-center p-4">Loading notifications...</div>';
     
     try {
+        // Subscribe to user notifications via Socket.io
+        const userId = sessionStorage.getItem('userId');
+        if (userId) {
+            notificationsSocket.emit('subscribe_user', userId);
+            console.log(`Socket: Subscribed to notifications for user: ${userId}`);
+        }
+        
         // Get all notifications
         const notifications = await fetchNotifications();
         
@@ -1875,6 +1952,14 @@ document.getElementById('projectForm').addEventListener('submit', async (e) => {
         
         closeCreateProjectModal();
         renderProjectsAndTasks();
+        
+        // Emit to Socket.io about the new project
+        projectsSocket.emit('project_updated', { 
+            projectId: projectData.projectId, 
+            action: 'add',
+            project: projectData
+        });
+        console.log(`Socket: Created new project ${projectData.projectId}`);
     } catch (error) {
         console.error('Error creating project:', error);
         alert('Failed to create project. Please try again.');
@@ -1908,17 +1993,19 @@ async function updateTaskStatuses() {
                 if (task.status !== autoStatus) {
                     console.log(`Updating task ${task.name} status from ${task.status} to ${autoStatus}`);
                     
-                    const response = await fetch(`${BASE_URL}/api/projects/tasks?projectId=${project.projectId}&&taskId=${task.taskId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({ status: autoStatus })
-                    });
+                    // Use our Socket.io integrated function instead of direct fetch
+                    const result = await fetchUpdateTask(project.projectId, task.taskId, { status: autoStatus });
                     
-                    if (response.ok) {
+                    if (result) {
                         updatedCount++;
+                        
+                        // Send notification about status change
+                        const userId = sessionStorage.getItem("userId");
+                        await fetchSendNotification(
+                            userId,
+                            'Task Status Updated',
+                            `Task "${task.name}" status changed from ${task.status} to ${autoStatus}`
+                        );
                     }
                 }
             }
@@ -1944,7 +2031,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (token && userId) {
         // User is logged in, show main section
         showMainSection();
-        initWebSocket();
+        initializeSocketIO(); // Initialize Socket.IO connections
         
         // Run task status update when application loads
         updateTaskStatuses();
@@ -2090,4 +2177,164 @@ function showToast(type, message) {
     }, 3000);
     
     return toastId;
+}
+
+// Fetch function for project updates
+async function fetchUpdateProject(projectId, updateData) {
+    const token = sessionStorage.getItem("sessionToken");
+    if (!token || !projectId || !updateData) return;
+    
+    try {
+        const response = await fetch(`${BASE_URL}/api/projects?projectId=${projectId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(updateData)
+        });
+        
+        if (response.ok) {
+            // Call Socket.io function after successful API call
+            projectsSocket.emit('project_updated', { projectId, ...updateData });
+            console.log(`API and Socket: Updated project ${projectId}`);
+            return await response.json();
+        } else {
+            throw new Error('Failed to update project');
+        }
+    } catch (error) {
+        console.error('Error updating project:', error);
+        return null;
+    }
+}
+
+// Fetch function for task updates
+async function fetchUpdateTask(projectId, taskId, updateData) {
+    const token = sessionStorage.getItem("sessionToken");
+    if (!token || !projectId || !taskId || !updateData) return;
+    
+    try {
+        const response = await fetch(`${BASE_URL}/api/projects/tasks?projectId=${projectId}&&taskId=${taskId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(updateData)
+        });
+        
+        if (response.ok) {
+            // Call Socket.io function after successful API call
+            tasksSocket.emit('task_updated', { projectId, taskId, ...updateData });
+            console.log(`API and Socket: Updated task ${taskId} in project ${projectId}`);
+            return await response.json();
+        } else {
+            throw new Error('Failed to update task');
+        }
+    } catch (error) {
+        console.error('Error updating task:', error);
+        return null;
+    }
+}
+
+// Fetch function for user updates
+async function fetchUpdateUserProfile(userData) {
+    const token = sessionStorage.getItem("sessionToken");
+    const userId = sessionStorage.getItem("userId");
+    if (!token || !userId || !userData) return;
+    
+    try {
+        const response = await fetch(`${BASE_URL}/api/users?userId=${userId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(userData)
+        });
+        
+        if (response.ok) {
+            // Call Socket.io function after successful API call
+            usersSocket.emit('user_updated', { userId, ...userData });
+            console.log(`API and Socket: Updated user profile for ${userId}`);
+            return await response.json();
+        } else {
+            throw new Error('Failed to update user profile');
+        }
+    } catch (error) {
+        console.error('Error updating user profile:', error);
+        return null;
+    }
+}
+
+// Fetch function for sending a notification
+async function fetchSendNotification(userId, title, body, link = null) {
+    const token = sessionStorage.getItem("sessionToken");
+    const senderUserId = sessionStorage.getItem("userId");
+    if (!token || !senderUserId || !userId || !title || !body) return;
+    
+    try {
+        const response = await fetch(`${BASE_URL}/api/notifications`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ userId, title, body, link })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            // Call Socket.io function after successful API call
+            notificationsSocket.emit('notification', { 
+                userId, 
+                title, 
+                body, 
+                link,
+                notificationId: result.notificationId,
+                senderId: senderUserId,
+                timestamp: new Date().toISOString()
+            });
+            console.log(`API and Socket: Sent notification to user ${userId}`);
+            return result;
+        } else {
+            throw new Error('Failed to send notification');
+        }
+    } catch (error) {
+        console.error('Error sending notification:', error);
+        return null;
+    }
+}
+
+// Initialize Socket.IO connections
+function initializeSocketIO() {
+    const userId = sessionStorage.getItem('userId');
+    if (!userId) {
+        console.error('Cannot initialize Socket.IO without user ID');
+        return;
+    }
+    
+    // Attempt to reconnect any disconnected sockets
+    if (projectsSocket.disconnected) projectsSocket.connect();
+    if (tasksSocket.disconnected) tasksSocket.connect();
+    if (usersSocket.disconnected) usersSocket.connect();
+    if (commentsSocket.disconnected) commentsSocket.connect();
+    if (notificationsSocket.disconnected) notificationsSocket.connect();
+    
+    // Authenticate with user ID to all namespaces
+    const auth = { userId };
+    
+    projectsSocket.emit('authenticate', auth);
+    tasksSocket.emit('authenticate', auth);
+    usersSocket.emit('authenticate', auth);
+    commentsSocket.emit('authenticate', auth);
+    notificationsSocket.emit('authenticate', auth);
+    
+    console.log('Socket.IO connections initialized for user:', userId);
+    
+    // Subscribe to user-specific notifications
+    notificationsSocket.emit('subscribe_user', userId);
+    
+    // Projects and tasks will be joined automatically when they are fetched
+    console.log('Projects and tasks will be joined when fetched');
 }

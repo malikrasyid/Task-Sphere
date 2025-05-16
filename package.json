@@ -10,5 +10,8 @@
     "calendar"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "socket.io": "^4.8.1"
+  }
 }
