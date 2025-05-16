@@ -120,7 +120,6 @@ async function login() {
             showMainSection();
             initializeSocketIO(); // Initialize Socket.IO connections
 
-            renderProjectsAndTasks();
         } else {
             showToast('error', data.error || "Login failed");
         }
@@ -610,7 +609,6 @@ document.getElementById('addTaskForm').addEventListener('submit', async (e) => {
             commentsSocket.emit('join_comment_thread', taskData.taskId);
             
             closeAddTaskModal();
-            await renderProjectsAndTasks();
         } else {
             const data = await response.json();
             alert(data.error || 'Error adding task');
@@ -704,7 +702,6 @@ async function markTaskAsDone(projectId, taskId) {
             
             // Opsional: refresh tampilan atau fetch ulang data
             showToast('success', 'Task marked as done!');
-            renderProjectsAndTasks();
         } else {
             throw new Error('Failed to update task status');
         }
@@ -837,7 +834,6 @@ async function addMemberToProject() {
         
         closeAddMemberModal();
         // Refresh project display
-        await renderProjectsAndTasks();
     } catch (error) {
         console.error('Error adding member:', error);
         alert('Failed to add member to project');
@@ -875,7 +871,6 @@ async function deleteTask(projectId, taskId) {
             console.log(`Socket: Deleted task ${taskId} from project ${projectId}`);
             
             alert('Task deleted successfully');
-            await renderProjectsAndTasks();
         } else {
             const data = await response.json();
             alert('Error deleting task: ' + data.error);
@@ -908,7 +903,6 @@ async function deleteProject(projectId) {
             console.log(`Socket: Deleted project ${projectId}`);
             
             alert('Project deleted successfully');
-            await renderProjectsAndTasks();
         } else {
             const data = await response.json();
             alert('Error deleting project: ' + data.error);
@@ -1070,7 +1064,6 @@ async function addComment(projectId, taskId) {
         console.log(`Socket: Comment added to task ${taskId}`);
         
         inputElement.value = '';
-        await renderProjectsAndTasks(); // Refresh the UI
         showToast('success', 'Comment added successfully');
     } catch (error) {
         console.error('Error adding comment:', error);
@@ -1108,7 +1101,6 @@ async function deleteComment(projectId, taskId, commentId) {
         });
         console.log(`Socket: Comment deleted from task ${taskId}`);
         
-        await renderProjectsAndTasks();
         showToast('success', 'Comment deleted successfully');
     } catch (error) {
         console.error('Error deleting comment:', error);
@@ -1951,7 +1943,6 @@ document.getElementById('projectForm').addEventListener('submit', async (e) => {
         }
         
         closeCreateProjectModal();
-        renderProjectsAndTasks();
         
         // Emit to Socket.io about the new project
         projectsSocket.emit('project_updated', { 
@@ -2016,7 +2007,6 @@ async function updateTaskStatuses() {
             // Optionally show a toast notification
             showToast('info', `Updated ${updatedCount} task statuses`);
             // Refresh the UI
-            renderProjectsAndTasks();
         }
     } catch (error) {
         console.error('Error updating task statuses:', error);
