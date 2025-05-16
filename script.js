@@ -8,13 +8,35 @@ const usersSocket = io(`${SERVER_URL}/users`);
 const commentsSocket = io(`${SERVER_URL}/comments`);
 const notificationsSocket = io(`${SERVER_URL}/notifications`);
 
+// Force UI refresh function - call this when socket events are received
+function forceUIRefresh(type, action) {
+    console.log(`🔄 Force refreshing UI after ${type} ${action}`);
+    
+    // Refresh projects and tasks
+    renderProjectsAndTasks();
+    
+    // Refresh calendar if visible
+    if (document.getElementById('calendarSection') && !document.getElementById('calendarSection').classList.contains('hidden')) {
+        renderCalendar();
+    }
+    
+    // Refresh dashboard if visible
+    const dashboardSection = document.getElementById('dashboardSection');
+    if (dashboardSection && !dashboardSection.classList.contains('hidden')) {
+        renderDashboard();
+    }
+    
+    // Show toast notification
+    showToast('info', `${type} ${action}`);
+}
+
 // Projects socket events
 projectsSocket.on('connect', () => {
-    console.log('Connected to projects namespace');
+    console.log('🟢 Connected to projects namespace');
 });
 
 projectsSocket.on('disconnect', () => {
-    console.log('Disconnected from projects namespace');
+    console.log('🔴 Disconnected from projects namespace');
 });
 
 // Helper function to update dashboard if it's visible
@@ -26,117 +48,116 @@ function updateDashboardIfVisible() {
 }
 
 projectsSocket.on('project_updated', (data) => {
-    console.log('Project update received:', data);
-    // Refresh the UI based on the action
-    if (data.action === 'add' || data.action === 'delete' || data.action === 'update' || data.action === 'add_member') {
-        renderProjectsAndTasks();
-        showToast('info', `Project ${data.action === 'add' ? 'added' : 
-                              data.action === 'delete' ? 'deleted' : 
-                              data.action === 'add_member' ? 'member added' : 'updated'}`);
-        updateDashboardIfVisible();
-    }
+    console.log('📣 Project update received:', data);
+    
+    // Always force refresh for any project update
+    let actionText = data.action === 'add' ? 'added' : 
+                    data.action === 'delete' ? 'deleted' : 
+                    data.action === 'add_member' ? 'member added' : 'updated';
+    
+    forceUIRefresh('Project', actionText);
 });
 
 projectsSocket.on('task_updated', (data) => {
-    console.log('Task update received from projects namespace:', data);
-    // Refresh the UI based on the action
-    if (data.action === 'add' || data.action === 'delete' || data.status) {
-        renderProjectsAndTasks();
-        if (document.getElementById('calendarSection') && !document.getElementById('calendarSection').classList.contains('hidden')) {
-            renderCalendar();
-        }
-        showToast('info', `Task ${data.action === 'add' ? 'added' : 
-                             data.action === 'delete' ? 'deleted' : 'updated'}`);
-        updateDashboardIfVisible();
-    }
+    console.log('📣 Task update received from projects namespace:', data);
+    
+    // Always force refresh for any task update
+    let actionText = data.action === 'add' ? 'added' : 
+                   data.action === 'delete' ? 'deleted' : 'updated';
+    
+    forceUIRefresh('Task', actionText);
 });
 
 // Tasks socket events
 tasksSocket.on('connect', () => {
-    console.log('Connected to tasks namespace');
+    console.log('🟢 Connected to tasks namespace');
 });
 
 tasksSocket.on('disconnect', () => {
-    console.log('Disconnected from tasks namespace');
+    console.log('🔴 Disconnected from tasks namespace');
 });
 
 tasksSocket.on('task_updated', (data) => {
-    console.log('Task update received:', data);
-    // Refresh the UI based on the action
-    if (data.action === 'add' || data.action === 'delete' || data.status) {
-        renderProjectsAndTasks();
-        if (document.getElementById('calendarSection') && !document.getElementById('calendarSection').classList.contains('hidden')) {
-            renderCalendar();
-        }
-        showToast('info', `Task ${data.action === 'add' ? 'added' : 
-                             data.action === 'delete' ? 'deleted' : 'updated'}`);
-        updateDashboardIfVisible();
-    }
+    console.log('📣 Task update received:', data);
+    
+    // Always force refresh for any task update
+    let actionText = data.action === 'add' ? 'added' : 
+                   data.action === 'delete' ? 'deleted' : 'updated';
+    
+    forceUIRefresh('Task', actionText);
 });
 
 // Comments socket events
 commentsSocket.on('connect', () => {
-    console.log('Connected to comments namespace');
+    console.log('🟢 Connected to comments namespace');
 });
 
 commentsSocket.on('disconnect', () => {
-    console.log('Disconnected from comments namespace');
+    console.log('🔴 Disconnected from comments namespace');
 });
 
 commentsSocket.on('comment_updated', (data) => {
-    console.log('Comment update received:', data);
-    // Refresh the UI
-    if (data.action === 'add' || data.action === 'delete') {
-        renderProjectsAndTasks();
-        showToast('info', `Comment ${data.action === 'add' ? 'added' : 'deleted'}`);
-    }
+    console.log('📣 Comment update received:', data);
+    
+    // Always force refresh for any comment update
+    let actionText = data.action === 'add' ? 'added' : 'deleted';
+    
+    forceUIRefresh('Comment', actionText);
 });
 
 // Users socket events
 usersSocket.on('connect', () => {
-    console.log('Connected to users namespace');
+    console.log('🟢 Connected to users namespace');
 });
 
 usersSocket.on('disconnect', () => {
-    console.log('Disconnected from users namespace');
+    console.log('🔴 Disconnected from users namespace');
 });
 
 usersSocket.on('user_updated', (data) => {
-    console.log('User update received:', data);
+    console.log('📣 User update received:', data);
+    
     // If current user was updated, refresh profile
     if (data.userId === sessionStorage.getItem("userId")) {
         userProfile();
     }
-    // Otherwise, refresh projects in case user is a team member
-    else {
-        renderProjectsAndTasks();
-    }
+    
+    // Always force a UI refresh for consistency
+    forceUIRefresh('User', 'updated');
 });
 
 // Notifications socket events
 notificationsSocket.on('connect', () => {
-    console.log('Connected to notifications namespace');
+    console.log('🟢 Connected to notifications namespace');
 });
 
 notificationsSocket.on('disconnect', () => {
-    console.log('Disconnected from notifications namespace');
+    console.log('🔴 Disconnected from notifications namespace');
 });
 
 notificationsSocket.on('notification', (data) => {
-    console.log('Notification received:', data);
-    // Show toast and refresh notifications
-    showToast('info', data.title);
+    console.log('📣 Notification received:', data);
+    
+    // Refresh notifications immediately
     renderNotifications();
     
-    // Add the notification to the top of the list for instant feedback
+    // Add notification at the top of recent activity
+    addNotificationToRecentActivity(data);
+    
+    // Force UI refresh to ensure everything is updated
+    forceUIRefresh('Notification', 'received');
+});
+
+// Helper function to add a notification to the recent activity section
+function addNotificationToRecentActivity(notification) {
     const container = document.getElementById('recentActivity');
     if (container) {
         // Create new notification element
         const notifElement = document.createElement('li');
         notifElement.className = 'bg-white p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow border-l-4 border-blue-300';
         notifElement.innerHTML = `
-            <div class="font-medium">${data.title}</div>
-            <div class="text-sm text-gray-600">${data.body}</div>
+            <div class="font-medium">${notification.title}</div>
+            <div class="text-sm text-gray-600">${notification.body || ''}</div>
             <div class="text-xs text-gray-500 mt-1">Just now</div>
         `;
         
@@ -147,9 +168,7 @@ notificationsSocket.on('notification', (data) => {
             container.appendChild(notifElement);
         }
     }
-    
-    updateDashboardIfVisible();
-});
+}
 
 document.getElementById('mainSection').classList.add('hidden');
          
@@ -2083,6 +2102,28 @@ async function updateTaskStatuses() {
     }
 }
 
+// Add a function to periodically check socket connections and reconnect if needed
+function checkSocketConnections() {
+    const userId = sessionStorage.getItem('userId');
+    if (!userId) return;
+    
+    let disconnectedSockets = [];
+    
+    // Check each socket
+    if (projectsSocket.disconnected) disconnectedSockets.push('projects');
+    if (tasksSocket.disconnected) disconnectedSockets.push('tasks');
+    if (usersSocket.disconnected) disconnectedSockets.push('users');
+    if (commentsSocket.disconnected) disconnectedSockets.push('comments');
+    if (notificationsSocket.disconnected) disconnectedSockets.push('notifications');
+    
+    // If any sockets are disconnected, reinitialize
+    if (disconnectedSockets.length > 0) {
+        console.warn('🔄 Some sockets disconnected, reconnecting:', disconnectedSockets.join(', '));
+        showToast('info', 'Reconnecting to real-time service...');
+        initializeSocketIO();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is already logged in
     const token = sessionStorage.getItem("sessionToken");
@@ -2091,7 +2132,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (token && userId) {
         // User is logged in, show main section
         showMainSection();
-        initializeSocketIO(); // Initialize Socket.IO connections
+        
+        // Initialize Socket.IO connections with a slight delay to ensure DOM is fully loaded
+        setTimeout(() => {
+            initializeSocketIO(); // Initialize Socket.IO connections
+            
+            // Set up periodic socket connection check (every 30 seconds)
+            setInterval(checkSocketConnections, 30 * 1000);
+        }, 500);
         
         // Run task status update when application loads
         updateTaskStatuses();
@@ -2124,7 +2172,7 @@ document.addEventListener('DOMContentLoaded', function() {
         renderCalendar();
     });
 
-     // Set up periodic refresh (every 60 seconds)
+    // Set up periodic refresh (every 60 seconds)
     setInterval(renderNotifications, 60000);
     
     // Set up notification toggle button if it exists
@@ -2158,8 +2206,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const headerElement = document.querySelector('header') || document.body;
     const statusIndicator = document.createElement('div');
     statusIndicator.id = 'wsStatus';
-    statusIndicator.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-3 py-1 rounded-full text-xs flex items-center opacity-75 hover:opacity-100 transition-opacity';
+    statusIndicator.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-3 py-1 rounded-full text-xs flex items-center opacity-75 hover:opacity-100 transition-opacity cursor-pointer';
     statusIndicator.innerHTML = '<span class="h-2 w-2 bg-gray-500 rounded-full mr-2"></span> Connecting...';
+    statusIndicator.addEventListener('click', () => {
+        // Manual reconnection when status indicator is clicked
+        checkSocketConnections();
+        showToast('info', 'Checking connection status...');
+    });
     headerElement.appendChild(statusIndicator);
     
     // Update status indicator based on WebSocket state
@@ -2167,16 +2220,30 @@ document.addEventListener('DOMContentLoaded', function() {
         const indicator = document.getElementById('wsStatus');
         if (!indicator) return;
         
-        if (!websocket || websocket.readyState === WebSocket.CLOSED) {
-            indicator.innerHTML = '<span class="h-2 w-2 bg-red-500 rounded-full mr-2"></span> Disconnected';
-        } else if (websocket.readyState === WebSocket.CONNECTING) {
-            indicator.innerHTML = '<span class="h-2 w-2 bg-yellow-500 rounded-full mr-2"></span> Connecting...';
-        } else if (websocket.readyState === WebSocket.OPEN) {
+        // Check if any socket is connected
+        const anyConnected = projectsSocket.connected || 
+                            tasksSocket.connected || 
+                            usersSocket.connected || 
+                            commentsSocket.connected || 
+                            notificationsSocket.connected;
+        
+        if (!anyConnected) {
+            indicator.innerHTML = '<span class="h-2 w-2 bg-red-500 rounded-full mr-2"></span> Disconnected (Click to reconnect)';
+            indicator.classList.remove('opacity-0');
+        } else if (projectsSocket.connected && 
+                   tasksSocket.connected && 
+                   usersSocket.connected && 
+                   commentsSocket.connected && 
+                   notificationsSocket.connected) {
             indicator.innerHTML = '<span class="h-2 w-2 bg-green-500 rounded-full mr-2"></span> Connected';
-            // Hide indicator after 3 seconds if connected
+            // Hide indicator after 3 seconds if all connected
             setTimeout(() => {
                 indicator.classList.add('opacity-0');
             }, 3000);
+        } else {
+            // Some connected, some not
+            indicator.innerHTML = '<span class="h-2 w-2 bg-yellow-500 rounded-full mr-2"></span> Partially Connected';
+            indicator.classList.remove('opacity-0');
         }
     }
     
@@ -2374,12 +2441,35 @@ function initializeSocketIO() {
         return;
     }
     
-    // Attempt to reconnect any disconnected sockets
-    if (projectsSocket.disconnected) projectsSocket.connect();
-    if (tasksSocket.disconnected) tasksSocket.connect();
-    if (usersSocket.disconnected) usersSocket.connect();
-    if (commentsSocket.disconnected) commentsSocket.connect();
-    if (notificationsSocket.disconnected) notificationsSocket.connect();
+    console.log('🚀 Initializing Socket.IO connections for user:', userId);
+    
+    // Ensure all sockets are connected
+    function connectSocket(socket, namespace) {
+        if (socket.disconnected) {
+            console.log(`🔌 Connecting to ${namespace} namespace...`);
+            socket.connect();
+            
+            // Add connection verification
+            setTimeout(() => {
+                if (socket.connected) {
+                    console.log(`✅ Connected to ${namespace} namespace successfully`);
+                } else {
+                    console.error(`❌ Failed to connect to ${namespace} namespace`);
+                    // Try to reconnect
+                    socket.connect();
+                }
+            }, 1000);
+        } else {
+            console.log(`✅ Already connected to ${namespace} namespace`);
+        }
+    }
+    
+    // Connect all sockets
+    connectSocket(projectsSocket, 'projects');
+    connectSocket(tasksSocket, 'tasks');
+    connectSocket(usersSocket, 'users');
+    connectSocket(commentsSocket, 'comments');
+    connectSocket(notificationsSocket, 'notifications');
     
     // Authenticate with user ID to all namespaces
     const auth = { userId };
@@ -2390,11 +2480,20 @@ function initializeSocketIO() {
     commentsSocket.emit('authenticate', auth);
     notificationsSocket.emit('authenticate', auth);
     
-    console.log('Socket.IO connections initialized for user:', userId);
+    console.log('🔐 Authentication sent to all namespaces');
     
     // Subscribe to user-specific notifications
     notificationsSocket.emit('subscribe_user', userId);
+    console.log('📩 Subscribed to notifications for user:', userId);
     
-    // Projects and tasks will be joined automatically when they are fetched
-    console.log('Projects and tasks will be joined when fetched');
+    // Log socket connection states
+    console.log('Socket connection states:');
+    console.log('- Projects:', projectsSocket.connected ? 'Connected ✅' : 'Disconnected ❌');
+    console.log('- Tasks:', tasksSocket.connected ? 'Connected ✅' : 'Disconnected ❌');
+    console.log('- Users:', usersSocket.connected ? 'Connected ✅' : 'Disconnected ❌');
+    console.log('- Comments:', commentsSocket.connected ? 'Connected ✅' : 'Disconnected ❌');
+    console.log('- Notifications:', notificationsSocket.connected ? 'Connected ✅' : 'Disconnected ❌');
+    
+    // Display connection status to user
+    showToast('info', 'Real-time connection established');
 }
