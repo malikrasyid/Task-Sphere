@@ -8,7 +8,7 @@ import {
     fetchTaskFromTasks,
     fetchSendNotification
 } from './api.js';
-import { renderTaskComments } from './comment.js';
+import { renderComments } from './comment.js';
 import { showToast } from './ui.js';
 
 // Function to render a single task
@@ -21,7 +21,7 @@ async function renderEachTask(taskId, projectId) {
     }
     
     // Get comments for the task
-    const { comments, html: commentsHTML } = await renderTaskComments(projectId, taskId);
+    const { comments, html: commentsHTML } = await renderComments(projectId, taskId);
     
     // Get task color
     const taskColor = getTaskColor(task.status);
