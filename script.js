@@ -927,7 +927,7 @@ async function addMemberToProject() {
         // Immediately update UI
         closeAddMemberModal();
         showToast('success', `Added ${selectedUser.firstName} ${selectedUser.lastName} to project`);
-        renderProjectTeam(projectId);
+        renderProjectTeamCard(selectedUser.userId, role);
         
         // Reset selectedUser
         selectedUser = null;
@@ -1214,23 +1214,26 @@ async function deleteComment(projectId, taskId, commentId) {
     }
 }
 
+// Function to render a single team member card
+async function renderProjectTeamCard(memberId, role) {
+    const name = toTitleCase(await fetchUserById(memberId));
+    return `
+        <div class="bg-white rounded-lg border border-gray-200 shadow-sm flex items-center p-3 hover:shadow-md transition-shadow">
+            <div class="h-8 w-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold mr-3">
+                ${name.charAt(0)}
+            </div>
+            <div>
+                <div class="font-medium text-gray-800">${name}</div>
+                <div class="text-xs text-gray-500">${role}</div>
+            </div>
+        </div>
+    `;
+}
+
 // Function to render a single project's team members
 async function renderProjectTeam(team) {
     return (await Promise.all(
-        team.map(async member => {
-            const name = toTitleCase(await fetchUserById(member.userId));
-            return `
-                <div class="bg-white rounded-lg border border-gray-200 shadow-sm flex items-center p-3 hover:shadow-md transition-shadow">
-                    <div class="h-8 w-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold mr-3">
-                        ${name.charAt(0)}
-                    </div>
-                    <div>
-                        <div class="font-medium text-gray-800">${name}</div>
-                        <div class="text-xs text-gray-500">${member.role}</div>
-                    </div>
-                </div>
-            `;
-        })
+        team.map(async member => renderProjectTeamCard(member.userId, member.role))
     )).join('');
 }
 
@@ -1472,7 +1475,7 @@ async function renderProjectsAndTasks() {
 
     // Render each project
     for (const project of projects) {
-        const projectElement = await renderProject(project);
+        const projectElement = await renderProject(project.id);
         container.appendChild(projectElement);
     }
 }
