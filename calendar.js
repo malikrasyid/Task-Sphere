@@ -1,4 +1,4 @@
-import { fetchUserProjects, fetchProjectTasks } from './api.js';
+import { fetchProjects, fetchTasksFromProject } from './api.js';
 import { getTaskColor } from './utils.js';
 
 // Initialize and render FullCalendar
@@ -10,11 +10,11 @@ async function renderCalendar() {
     calendarEl.innerHTML = '';
     
     // Fetch all projects
-    const projects = await fetchUserProjects();
+    const projects = await fetchProjects();
     if (!projects || !projects.length) return;
     
     // Fetch all tasks from all projects
-    const allTasksPromises = projects.map(project => fetchProjectTasks(project.projectId));
+    const allTasksPromises = projects.map(project => fetchTasksFromProject(project.projectId));
     const allTasksResults = await Promise.all(allTasksPromises);
     
     // Flatten tasks array and remove nulls

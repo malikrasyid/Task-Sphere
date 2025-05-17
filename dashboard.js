@@ -1,4 +1,4 @@
-import { fetchUserProjects, fetchProjectTasks } from './api.js';
+import { fetchProjects, fetchTasksFromProject } from './api.js';
 import { formatDateUTC, getTaskColor } from './utils.js';
 
 // Function to initialize or refresh the dashboard
@@ -20,11 +20,11 @@ async function renderDashboard() {
     console.log('Rendering dashboard...');
     
     // Fetch all projects
-    const projects = await fetchUserProjects();
+    const projects = await fetchProjects();
     if (!projects) return;
     
     // Fetch all tasks for all projects
-    const tasksPromises = projects.map(project => fetchProjectTasks(project.projectId));
+    const tasksPromises = projects.map(project => fetchTasksFromProject(project.projectId));
     const tasksResults = await Promise.all(tasksPromises);
     
     // Flatten tasks and filter out nulls
