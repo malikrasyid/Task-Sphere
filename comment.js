@@ -1,5 +1,5 @@
 import { formatDateUTC } from './utils.js';
-import { fetchUserById, fetchCommentsFromTasks, fetchCommentFromComments } from './api.js';
+import { fetchUserById, fetchCommentsFromTask, fetchCommentFromComments } from './api.js';
 import { toTitleCase } from './utils.js';
 
 // Function to render a single comment card
@@ -24,7 +24,7 @@ async function renderEachComment(projectId, taskId, commentId) {
 }
 
 async function renderComments(projectId, taskId) {
-    const comments = await fetchCommentsFromTasks(projectId, taskId) || [];
+    const comments = await fetchCommentsFromTask(projectId, taskId) || [];
     
     return {
         comments,
