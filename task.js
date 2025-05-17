@@ -14,11 +14,21 @@ import { showToast } from './ui.js';
 // Function to render a single task
 async function renderEachTask(taskId, projectId) {
     // Fetch the task data
-    const task = await fetchTaskFromTasks(projectId, taskId);
-    if (!task) {
+    const taskData = await fetchTaskFromTasks(projectId, taskId);
+    if (!taskData) {
         console.error(`Failed to fetch task ${taskId}`);
         return '';
     }
+    
+    // Map task data to a clean structure
+    const task = {
+        id: taskData.taskId,
+        name: taskData.name,
+        deliverable: taskData.deliverable || '',
+        status: taskData.status,
+        startDate: taskData.startDate,
+        endDate: taskData.endDate
+    };
     
     // Get comments for the task
     const { comments, html: commentsHTML } = await renderComments(projectId, taskId);
@@ -42,14 +52,14 @@ async function renderEachTask(taskId, projectId) {
             </div>
             
             <div class="opacity-0 group-hover:opacity-100 flex justify-end space-x-2 mb-3 transition-opacity">
-                <button onclick="markTaskAsDone('${projectId}', '${task.taskId}')" 
+                <button onclick="markTaskAsDone('${projectId}', '${task.id}')" 
                     class="bg-green-50 hover:bg-green-100 text-green-700 text-xs font-medium px-2 py-1 rounded-md transition-colors flex items-center">
                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
                     Complete
                 </button>
-                <button onclick="deleteTask('${projectId}', '${task.taskId}')" 
+                <button onclick="deleteTask('${projectId}', '${task.id}')" 
                     class="bg-red-50 hover:bg-red-100 text-red-700 text-xs font-medium px-2 py-1 rounded-md transition-colors flex items-center">
                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -70,10 +80,10 @@ async function renderEachTask(taskId, projectId) {
                     ${commentsHTML}
                 </div>
                 <div class="flex mt-2">
-                    <input type="text" id="comment-input-${task.taskId}" 
+                    <input type="text" id="comment-input-${task.id}" 
                         class="flex-grow border border-gray-200 rounded-l-md px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500" 
                         placeholder="Add a comment...">
-                    <button onclick="addComment('${projectId}', '${task.taskId}')" 
+                    <button onclick="addComment('${projectId}', '${task.id}')" 
                         class="bg-indigo-600 text-white px-3 py-1 rounded-r-md text-sm hover:bg-indigo-700 transition-colors">
                         Send
                     </button>
