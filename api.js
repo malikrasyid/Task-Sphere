@@ -9,7 +9,7 @@ import {
 } from './socket.js';
 import { handleSessionExpired } from './auth.js';
 import { renderProjectsAndTasks, renderProject } from './project.js';
-import { renderTask } from './task.js';
+import { renderEachTask } from './task.js';
 import { renderCalendar } from './calendar.js';
 import { updateDashboardIfVisible } from './dashboard.js';
 
@@ -737,7 +737,7 @@ async function fetchUpdateTask(projectId, taskId, updateData) {
             
             // Immediately update UI for the client that made the change
             showToast('success', 'Task updated successfully');
-            renderTask(taskId, projectId);
+            renderEachTask(taskId, projectId);
             
             // Update calendar if visible
             if (document.getElementById('calendarSection') && !document.getElementById('calendarSection').classList.contains('hidden')) {
