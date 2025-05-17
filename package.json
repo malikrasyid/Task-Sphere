@@ -1,8 +1,14 @@
 {
   "name": "task-sphere",
   "version": "1.0.0",
-  "description": "Task management application with project, task, and calendar functionality",
-  "main": "script.js",
+  "description": "Task management application with real-time Socket.IO integration",
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "keywords": [
     "task",
     "project",
@@ -12,6 +18,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "socket.io": "^4.8.1"
+    "socket.io-client": "^4.7.2"
+  },
+  "devDependencies": {
+    "vite": "^4.4.9"
   }
 }
