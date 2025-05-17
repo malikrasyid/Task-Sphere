@@ -1365,7 +1365,7 @@ async function renderProject(project) {
     const teamHTML = await renderProjectTeam(project.team);
     
     // Render tasks
-    const { tasks, html: tasksHTML } = await renderProjectTasks(project);
+    const { tasks, html: tasksHTML } = await renderProjectTasks(project.projectId);
     
     // Calculate project progress
     const completedTasks = tasks.filter(task => task.status === 'Done').length;
@@ -1475,7 +1475,7 @@ async function renderProjectsAndTasks() {
 
     // Render each project
     for (const project of projects) {
-        const projectElement = await renderProject(project.id);
+        const projectElement = await renderProject(project.projectId);
         container.appendChild(projectElement);
     }
 }
