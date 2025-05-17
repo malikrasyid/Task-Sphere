@@ -14,7 +14,7 @@ import { renderCalendar } from './calendar.js';
 import { updateDashboardIfVisible } from './dashboard.js';
 
 // Fetch projects for a user
-async function fetchUserProjects() {
+async function fetchProjects() {
     const token = sessionStorage.getItem("sessionToken");
     
     try {
@@ -53,8 +53,49 @@ async function fetchUserProjects() {
     }
 }
 
+// Fetch a specific project by ID
+async function fetchProject(projectId) {
+    const token = sessionStorage.getItem("sessionToken");
+    
+    try {
+        const response = await fetch(`${BASE_URL}/api/projects?projectId=${projectId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.status === 401) {
+            handleSessionExpired();
+            return null;
+        }
+
+        if (!response.ok) {
+            const text = await response.text();
+            console.error('Server responded with error:', response.status, text);
+            return null;
+        }
+
+        const data = await response.json();
+        const project = data.project;
+        
+        // Join Socket.io channel for this project if we have a project
+        if (project) {
+            projectsSocket.emit('join_project', project.projectId);
+            console.log(`Socket: Joined project channel: ${project.projectId}`);
+        }
+        
+        return project;
+    } catch (error) {
+        console.error('Error fetching project:', error);
+        showToast('error', 'Failed to load project');
+        return null;
+    }
+}
+
 // Fetch tasks for a project
-async function fetchProjectTasks(projectId) {
+async function fetchTasksFromProject(projectId) {
     const token = sessionStorage.getItem("sessionToken");
 
     try {
@@ -93,6 +134,61 @@ async function fetchProjectTasks(projectId) {
     }
 }
 
+// Fetch a specific task by projectId and taskId
+async function fetchTaskFromTasks(projectId, taskId) {
+    const token = sessionStorage.getItem("sessionToken");
+
+    try {
+        const response = await fetch(`${BASE_URL}/api/projects/tasks?projectId=${projectId}&&taskId=${taskId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.status === 401) {
+            handleSessionExpired();
+            return;
+        }
+
+        if (!response.ok) {
+            const text = await response.text();
+            console.error('Server responded with error:', response.status, text);
+            return;
+        }
+
+        const data = await response.json();
+        const task = data.task;
+        
+        // Join Socket.io channel for this task
+        if (task) {
+            tasksSocket.emit('join_task', task.taskId);
+            commentsSocket.emit('join_comment_thread', task.taskId);
+            console.log(`Socket: Joined task and comment channels for task: ${task.taskId}`);
+            
+            // Format dates if they exist
+            if (task.startDate) {
+                task.startDate = task.startDate._seconds ? 
+                    new Date(task.startDate._seconds * 1000).toISOString() : 
+                    new Date(task.startDate).toISOString();
+            }
+            
+            if (task.endDate) {
+                task.endDate = task.endDate._seconds ? 
+                    new Date(task.endDate._seconds * 1000).toISOString() : 
+                    new Date(task.endDate).toISOString();
+            }
+        }
+        
+        return task;
+    } catch (error) {
+        console.error('Error fetching task:', error);
+        showToast('error', 'Failed to load task');
+        return null;
+    }
+}
+
 // Fetch a user by ID
 async function fetchUserById(userId) {
     const token = sessionStorage.getItem("sessionToken");
@@ -115,7 +211,7 @@ async function fetchUserById(userId) {
 }
 
 // Fetch comments for a task
-async function fetchTaskComments(projectId, taskId) {
+async function fetchCommentsFromTask(projectId, taskId) {
     const token = sessionStorage.getItem("sessionToken");
 
     try {
@@ -145,7 +241,7 @@ async function fetchTaskComments(projectId, taskId) {
 }
 
 // Fetch a single comment by ID
-async function fetchCommentById(projectId, taskId, commentId) {
+async function fetchCommentFromComments(projectId, taskId, commentId) {
     const token = sessionStorage.getItem("sessionToken");
 
     try {
@@ -704,11 +800,13 @@ async function addMemberToProject(projectId, userId, role) {
 }
 
 export {
-    fetchUserProjects,
-    fetchProjectTasks,
+    fetchProjects,
+    fetchProject,
+    fetchTasksFromProject,
+    fetchTaskFromTasks,
     fetchUserById,
-    fetchTaskComments,
-    fetchCommentById,
+    fetchCommentsFromTask,
+    fetchCommentFromComments,
     fetchNotifications,
     searchUsers,
     addComment,

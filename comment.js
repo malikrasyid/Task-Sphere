@@ -1,10 +1,10 @@
 import { formatDateUTC } from './utils.js';
-import { fetchUserById, fetchTaskComments, fetchCommentById } from './api.js';
+import { fetchUserById, fetchCommentsFromTasks, fetchCommentFromComments } from './api.js';
 import { toTitleCase } from './utils.js';
 
 // Function to render a single comment card
-async function renderCommentCard(projectId, taskId, commentId) {
-    const comment = await fetchCommentById(projectId, taskId, commentId);
+async function renderEachComment(projectId, taskId, commentId) {
+    const comment = await fetchCommentFromComments(projectId, taskId, commentId);
     const name = toTitleCase(await fetchUserById(comment.userId));
     return `
         <div class="bg-white rounded-lg border border-gray-100 p-3 mb-2 hover:shadow-sm transition-shadow">
@@ -23,14 +23,13 @@ async function renderCommentCard(projectId, taskId, commentId) {
     `;
 }
 
-// Function to render task comments
-async function renderTaskComments(projectId, taskId) {
-    const comments = await fetchTaskComments(projectId, taskId) || [];
+async function renderComments(projectId, taskId) {
+    const comments = await fetchCommentsFromTasks(projectId, taskId) || [];
     
     return {
         comments,
         html: (await Promise.all(comments.map(comment => 
-            renderCommentCard(projectId, taskId, comment.commentId)
+            renderEachComment(projectId, taskId, comment.commentId)
         ))).join('')
     };
 }
@@ -39,13 +38,13 @@ async function renderTaskComments(projectId, taskId) {
 async function updateTaskComments(projectId, taskId) {
     const commentContainer = document.querySelector(`#task-${taskId} .comments-container`);
     if (commentContainer) {
-        const { html } = await renderTaskComments(projectId, taskId);
+        const { html } = await fetchComments(projectId, taskId);
         commentContainer.innerHTML = html;
     }
 }
 
 export {
-    renderCommentCard,
-    renderTaskComments,
+    renderEachComment,
+    renderComments,
     updateTaskComments
 }; 

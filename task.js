@@ -1,10 +1,27 @@
 import { formatDateUTC, getTaskColor } from './utils.js';
-import { fetchTaskComments, markTaskAsDone, deleteTask } from './api.js';
+import { 
+    fetchCommentsFromTask,
+    fetchUpdateTask, 
+    deleteTask, 
+    fetchProjects,
+    fetchTasksFromProject,
+    fetchTaskFromTasks,
+    fetchSendNotification
+} from './api.js';
+import { renderTaskComments } from './comment.js';
+import { showToast } from './ui.js';
 
 // Function to render a single task
-async function renderTask(task, projectId) {
+async function renderEachTask(taskId, projectId) {
+    // Fetch the task data
+    const task = await fetchTaskFromTasks(projectId, taskId);
+    if (!task) {
+        console.error(`Failed to fetch task ${taskId}`);
+        return '';
+    }
+    
     // Get comments for the task
-    const { comments, html: commentsHTML } = await renderTaskComments(projectId, task.taskId);
+    const { comments, html: commentsHTML } = await renderTaskComments(projectId, taskId);
     
     // Get task color
     const taskColor = getTaskColor(task.status);
@@ -67,18 +84,35 @@ async function renderTask(task, projectId) {
 }
 
 // Function to render tasks for a project
-async function renderProjectTasks(projectId) {
-    const tasks = await fetchProjectTasks(projectId) || [];
+async function renderTasksFromProject(projectId) {
+    const tasks = await fetchTasksFromProject(projectId) || [];
     
     // Generate HTML for all tasks
     const tasksHTMLArray = await Promise.all(tasks.map(task => 
-        renderTask(task, projectId)
+        renderEachTask(task.taskId, projectId)
     ));
     
     return {
         tasks,
         html: tasksHTMLArray.join('')
     };
+}
+
+// Helper function to determine task status based on dates
+function getAutoStatus(startDate, endDate) {
+    const now = new Date();
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+    
+    if (!start || !end) return 'Not Started';
+    
+    if (now < start) {
+        return 'Not Started';
+    } else if (now > end) {
+        return 'Overdue';
+    } else {
+        return 'Ongoing';
+    }
 }
 
 // Function to automatically update task statuses based on dates
@@ -88,13 +122,13 @@ async function updateTaskStatuses() {
     if (!token) return;
     
     try {
-        const projects = await fetchUserProjects();
+        const projects = await fetchProjects();
         if (!projects) return;
         
         let updatedCount = 0;
         
         for (const project of projects) {
-            const tasks = await fetchProjectTasks(project.projectId);
+            const tasks = await fetchTasksFromProject(project.projectId);
             if (!tasks) continue;
             
             for (const task of tasks) {
@@ -136,8 +170,33 @@ async function updateTaskStatuses() {
     }
 }
 
+async function markTaskAsDone(projectId, taskId) {
+    try {
+        const result = await fetchUpdateTask(projectId, taskId, { status: 'Done' });
+        
+        if (result) {
+            // Send notification
+            const userId = sessionStorage.getItem("userId");
+            await fetchSendNotification(
+                userId,
+                'Task Completed',
+                `Task has been marked as Done`
+            );
+
+            // Immediately update UI (fetchUpdateTask already does this)
+            showToast('success', 'Task marked as done!');
+        } else {
+            throw new Error('Failed to update task status');
+        }
+    } catch (error) {
+        console.error('Error marking task as done:', error);
+        showToast('error', 'Failed to mark task as done');
+    }
+}
+
 export {
-    renderTask,
-    renderProjectTasks,
-    updateTaskStatuses
+    renderEachTask,
+    renderTasksFromProject,
+    updateTaskStatuses,
+    markTaskAsDone
 }; 
