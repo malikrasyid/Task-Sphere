@@ -700,14 +700,7 @@ document.getElementById('addTaskForm').addEventListener('submit', async (e) => {
             // Immediately update UI
             closeAddTaskModal();
             showToast('success', 'Task added successfully');
-            renderProjectsAndTasks();
-            
-            // Update calendar if visible
-            if (document.getElementById('calendarSection') && !document.getElementById('calendarSection').classList.contains('hidden')) {
-                renderCalendar();
-            }
-            
-            updateDashboardIfVisible();
+            renderProject(projectId);
         } else {
             const data = await response.json();
             showToast('error', data.error || 'Error adding task');
@@ -934,7 +927,7 @@ async function addMemberToProject() {
         // Immediately update UI
         closeAddMemberModal();
         showToast('success', `Added ${selectedUser.firstName} ${selectedUser.lastName} to project`);
-        renderProjectsAndTasks();
+        renderProjectTeam(projectId);
         
         // Reset selectedUser
         selectedUser = null;
@@ -976,14 +969,7 @@ async function deleteTask(projectId, taskId) {
             
             // Immediately update UI
             showToast('success', 'Task deleted successfully');
-            renderProjectsAndTasks();
-            
-            // Update calendar if visible
-            if (document.getElementById('calendarSection') && !document.getElementById('calendarSection').classList.contains('hidden')) {
-                renderCalendar();
-            }
-            
-            updateDashboardIfVisible();
+            renderProject(projectId);
         } else {
             const data = await response.json();
             showToast('error', 'Error deleting task: ' + data.error);
@@ -1016,8 +1002,7 @@ async function deleteProject(projectId) {
             
             // Immediately update UI
             showToast('success', 'Project deleted successfully');
-            renderProjectsAndTasks();
-            updateDashboardIfVisible();
+            renderProject(projectId);
         } else {
             const data = await response.json();
             showToast('error', 'Error deleting project: ' + data.error);
@@ -1183,7 +1168,7 @@ async function addComment(projectId, taskId) {
         
         // Immediately update UI
         showToast('success', 'Comment added successfully');
-        renderProjectsAndTasks();
+        renderCommentCard(projectId, taskId, commentId);
     } catch (error) {
         console.error('Error adding comment:', error);
         showToast('error', 'Failed to add comment');
@@ -1222,13 +1207,251 @@ async function deleteComment(projectId, taskId, commentId) {
         
         // Immediately update UI
         showToast('success', 'Comment deleted successfully');
-        renderProjectsAndTasks();
+        renderCommentCard(projectId, taskId, commentId);
     } catch (error) {
         console.error('Error deleting comment:', error);
         showToast('error', 'Failed to delete comment');
     }
 }
 
+// Function to render a single project's team members
+async function renderProjectTeam(team) {
+    return (await Promise.all(
+        team.map(async member => {
+            const name = toTitleCase(await fetchUserById(member.userId));
+            return `
+                <div class="bg-white rounded-lg border border-gray-200 shadow-sm flex items-center p-3 hover:shadow-md transition-shadow">
+                    <div class="h-8 w-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold mr-3">
+                        ${name.charAt(0)}
+                    </div>
+                    <div>
+                        <div class="font-medium text-gray-800">${name}</div>
+                        <div class="text-xs text-gray-500">${member.role}</div>
+                    </div>
+                </div>
+            `;
+        })
+    )).join('');
+}
+
+// Function to render a single comment card
+async function renderCommentCard(projectId, taskId, commentId) {
+    const comment = await fetchCommentById(projectId, taskId, commentId);
+    const name = toTitleCase(await fetchUserById(comment.userId));
+    return `
+        <div class="bg-white rounded-lg border border-gray-100 p-3 mb-2 hover:shadow-sm transition-shadow">
+            <div class="flex items-center justify-between">
+                <div class="font-medium text-sm text-gray-900">${name}</div>
+                <button onclick="deleteComment('${projectId}', '${taskId}', '${comment.commentId}'); event.stopPropagation();" 
+                    class="text-gray-400 hover:text-red-500 transition-colors">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="text-sm mt-1">${comment.message}</div>
+            <div class="text-xs text-gray-400 mt-1">${formatDateUTC(comment.timestamp)}</div>
+        </div>
+    `;
+}
+
+// Function to render task comments
+async function renderTaskComments(projectId, taskId) {
+    const comments = await fetchTaskComments(projectId, taskId) || [];
+    
+    return {
+        comments,
+        html: (await Promise.all(comments.map(comment => 
+            renderCommentCard(projectId, taskId, comment.commentId)
+        ))).join('')
+    };
+}
+
+// Function to update comments container for a specific task
+async function updateTaskComments(projectId, taskId) {
+    const commentContainer = document.querySelector(`#task-${taskId} .comments-container`);
+    if (commentContainer) {
+        const { html } = await renderTaskComments(projectId, taskId);
+        commentContainer.innerHTML = html;
+    }
+}
+
+// Function to render a single task
+async function renderTask(task, projectId) {
+    // Get comments for the task
+    const { comments, html: commentsHTML } = await renderTaskComments(projectId, task.taskId);
+    
+    // Get task color
+    const taskColor = getTaskColor(task.status);
+    
+    return `
+        <div class="bg-white rounded-lg border-gray-200 shadow-sm hover:shadow-md transition-all p-4 group relative">
+            <div class="flex justify-between items-start mb-2">
+                <span class="font-medium text-gray-900">${task.name}</span>
+                <span class="px-2 py-1 rounded text-white text-xs" 
+                  style="background-color: ${taskColor}">${task.status}</span>
+            </div>
+            <div class="text-sm text-gray-600 mb-3">${task.deliverable}</div>
+            <div class="flex items-center text-xs text-gray-500 mb-3">
+                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path>
+                </svg>
+                    ${formatDateUTC(task.startDate)} - ${formatDateUTC(task.endDate)}
+            </div>
+            
+            <div class="opacity-0 group-hover:opacity-100 flex justify-end space-x-2 mb-3 transition-opacity">
+                <button onclick="markTaskAsDone('${projectId}', '${task.taskId}')" 
+                    class="bg-green-50 hover:bg-green-100 text-green-700 text-xs font-medium px-2 py-1 rounded-md transition-colors flex items-center">
+                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Complete
+                </button>
+                <button onclick="deleteTask('${projectId}', '${task.taskId}')" 
+                    class="bg-red-50 hover:bg-red-100 text-red-700 text-xs font-medium px-2 py-1 rounded-md transition-colors flex items-center">
+                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    Delete
+                </button>
+            </div>
+
+            <!-- Comments section -->
+            <div class="pt-3 border-t border-gray-100">
+                <div class="flex items-center text-xs font-medium text-gray-700 mb-2">
+                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zM7 8H5v2h2V8zm2 0h2v2H9V8zm6 0h-2v2h2V8z" clip-rule="evenodd"></path>
+                    </svg>
+                    Comments (${comments.length})
+                </div>
+                <div class="comments-container max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 pr-1">
+                    ${commentsHTML}
+                </div>
+                <div class="flex mt-2">
+                    <input type="text" id="comment-input-${task.taskId}" 
+                        class="flex-grow border border-gray-200 rounded-l-md px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500" 
+                        placeholder="Add a comment...">
+                    <button onclick="addComment('${projectId}', '${task.taskId}')" 
+                        class="bg-indigo-600 text-white px-3 py-1 rounded-r-md text-sm hover:bg-indigo-700 transition-colors">
+                        Send
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Function to render tasks for a project
+async function renderProjectTasks(projectId) {
+    const tasks = await fetchProjectTasks(projectId) || [];
+    
+    // Generate HTML for all tasks
+    const tasksHTMLArray = await Promise.all(tasks.map(task => 
+        renderTask(task, project.projectId)
+    ));
+    
+    return {
+        tasks,
+        html: tasksHTMLArray.join('')
+    };
+}
+
+// Function to render a single project element
+async function renderProject(project) {
+    // Render team members
+    const teamHTML = await renderProjectTeam(project.team);
+    
+    // Render tasks
+    const { tasks, html: tasksHTML } = await renderProjectTasks(project);
+    
+    // Calculate project progress
+    const completedTasks = tasks.filter(task => task.status === 'Done').length;
+    const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
+
+    // Create project element
+    const projectElement = document.createElement('details');
+    projectElement.classList.add('mb-6', 'bg-white', 'rounded-lg', 'shadow', 'overflow-hidden', 'border', 'border-gray-200');
+    projectElement.innerHTML = `
+        <summary class="cursor-pointer p-5 flex justify-between items-center hover:bg-gray-50 transition-colors">
+            <div class="flex-1">
+                <div class="flex items-center justify-between mb-1">
+                    <h3 class="text-lg font-bold text-gray-900">${project.name}</h3>
+                    <span class="text-sm font-medium ${progress === 100 ? 'text-green-600' : 'text-blue-600'}">
+                        ${progress}% Complete
+                    </span>
+                </div>
+                <p class="text-gray-600 text-sm">${project.description || 'No description'}</p>
+                
+                <!-- Progress bar -->
+                <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                    <div class="bg-indigo-600 h-1.5 rounded-full" style="width: ${progress}%"></div>
+                </div>
+            </div>
+            <button onclick="deleteProject('${project.projectId}'); event.stopPropagation();" 
+                class="ml-4 text-gray-400 hover:text-red-500 transition-colors">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v.01a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v.01a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                </svg>
+            </button>
+        </summary>
+        <div class="p-5 space-y-6 bg-gray-50 border-t border-gray-200">
+            <!-- Tasks Section -->
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="font-medium text-gray-900 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-indigo-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+                            <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
+                        </svg>
+                        Tasks (${tasks.length})
+                    </h4>
+                    <button onclick="showAddTaskModal('${project.projectId}')" 
+                        class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Add Task
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    ${tasksHTML.length > 0 ? tasksHTML : 
+                      `<div class="col-span-2 bg-white p-6 rounded-lg border border-gray-200 text-center">
+                          <p class="text-gray-500">No tasks yet. Add your first task to get started.</p>
+                       </div>`}
+                </div>
+            </div>
+
+            <!-- Team Members Section -->
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="font-medium text-gray-900 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-indigo-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path>
+                        </svg>
+                        Team Members (${project.team.length})
+                    </h4>
+                    <button onclick="showAddMemberModal('${project.projectId}')" 
+                        class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                        </svg>
+                        Add Member
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    ${teamHTML.length > 0 ? teamHTML : 
+                      `<div class="col-span-3 bg-white p-6 rounded-lg border border-gray-200 text-center">
+                          <p class="text-gray-500">No team members yet. Add your first team member to collaborate.</p>
+                       </div>`}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    return projectElement;
+}
+
+// Main function to render all projects and tasks
 async function renderProjectsAndTasks() {
     const container = document.getElementById('projects-container');
     container.innerHTML = '';
@@ -1247,193 +1470,9 @@ async function renderProjectsAndTasks() {
         return;
     }
 
+    // Render each project
     for (const project of projects) {
-        const tasks = await fetchProjectTasks(project.projectId) || [];
-
-        const teamHTML = (await Promise.all(
-            project.team.map(async member => {
-                const name = toTitleCase(await fetchUserById(member.userId));
-                return `
-                    <div class="bg-white rounded-lg border border-gray-200 shadow-sm flex items-center p-3 hover:shadow-md transition-shadow">
-                        <div class="h-8 w-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold mr-3">
-                            ${name.charAt(0)}
-                        </div>
-                        <div>
-                            <div class="font-medium text-gray-800">${name}</div>
-                            <div class="text-xs text-gray-500">${member.role}</div>
-                        </div>
-                    </div>
-                `;
-            })
-        )).join('');
-
-        const completedTasks = tasks.filter(task => task.status === 'Done').length;
-        const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
-
-        const tasksHTMLArray = await Promise.all(tasks.map(async task => {
-            // Fetch comments for each task
-            const comments = await fetchTaskComments(project.projectId, task.taskId) || [];
-            
-            const commentsHTML = (await Promise.all(comments.map(async comment => {
-            const name = toTitleCase(await fetchUserById(comment.userId));
-            return `
-                <div class="bg-white rounded-lg border border-gray-100 p-3 mb-2 hover:shadow-sm transition-shadow">
-                        <div class="flex items-center justify-between">
-                            <div class="font-medium text-sm text-gray-900">${name}</div>
-                            <button onclick="deleteComment('${project.projectId}', '${task.taskId}', '${comment.commentId}'); event.stopPropagation();" 
-                                class="text-gray-400 hover:text-red-500 transition-colors">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-                                </svg>
-                            </button>
-                        </div>
-                        <div class="text-sm mt-1">${comment.message}</div>
-                        <div class="text-xs text-gray-400 mt-1">${formatDateUTC(comment.timestamp)}</div>
-                    </div>
-            `;
-        }))).join('');
-
-        // Get task color from the existing function
-        const taskColor = getTaskColor(task.status);
-
-        return `
-            <div class="bg-white rounded-lg border-gray-200 shadow-sm hover:shadow-md transition-all p-4 group relative">
-                <div class="flex justify-between items-start mb-2">
-                    <span class="font-medium text-gray-900">${task.name}</span>
-                    <span class="px-2 py-1 rounded text-white text-xs" 
-                      style="background-color: ${taskColor}">${task.status}</span>
-                </div>
-                <div class="text-sm text-gray-600 mb-3">${task.deliverable}</div>
-                <div class="flex items-center text-xs text-gray-500 mb-3">
-                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path>
-                    </svg>
-                        ${formatDateUTC(task.startDate)} - ${formatDateUTC(task.endDate)}
-                </div>
-                
-                <div class="opacity-0 group-hover:opacity-100 flex justify-end space-x-2 mb-3 transition-opacity">
-                    <button onclick="markTaskAsDone('${project.projectId}', '${task.taskId}')" 
-                        class="bg-green-50 hover:bg-green-100 text-green-700 text-xs font-medium px-2 py-1 rounded-md transition-colors flex items-center">
-                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        Complete
-                    </button>
-                    <button onclick="deleteTask('${project.projectId}', '${task.taskId}')" 
-                        class="bg-red-50 hover:bg-red-100 text-red-700 text-xs font-medium px-2 py-1 rounded-md transition-colors flex items-center">
-                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                        </svg>
-                        Delete
-                    </button>
-                </div>
-
-                <!-- Comments section -->
-                <div class="pt-3 border-t border-gray-100">
-                    <div class="flex items-center text-xs font-medium text-gray-700 mb-2">
-                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                            <path fill-rule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zM7 8H5v2h2V8zm2 0h2v2H9V8zm6 0h-2v2h2V8z" clip-rule="evenodd"></path>
-                        </svg>
-                        Comments (${comments.length})
-                    </div>
-                    <div class="comments-container max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 pr-1">
-                        ${commentsHTML}
-                    </div>
-                    <div class="flex mt-2">
-                        <input type="text" id="comment-input-${task.taskId}" 
-                            class="flex-grow border border-gray-200 rounded-l-md px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500" 
-                            placeholder="Add a comment...">
-                        <button onclick="addComment('${project.projectId}', '${task.taskId}')" 
-                            class="bg-indigo-600 text-white px-3 py-1 rounded-r-md text-sm hover:bg-indigo-700 transition-colors">
-                            Send
-                        </button>
-                    </div>
-                </div>
-            </div>
-            `;
-        }));
-        
-        const tasksHTML = tasksHTMLArray.join('');
-
-        const projectElement = document.createElement('details');
-        projectElement.classList.add('mb-6', 'bg-white', 'rounded-lg', 'shadow', 'overflow-hidden', 'border', 'border-gray-200');
-        projectElement.innerHTML = `
-            <summary class="cursor-pointer p-5 flex justify-between items-center hover:bg-gray-50 transition-colors">
-                <div class="flex-1">
-                    <div class="flex items-center justify-between mb-1">
-                        <h3 class="text-lg font-bold text-gray-900">${project.name}</h3>
-                        <span class="text-sm font-medium ${progress === 100 ? 'text-green-600' : 'text-blue-600'}">
-                            ${progress}% Complete
-                        </span>
-                    </div>
-                    <p class="text-gray-600 text-sm">${project.description || 'No description'}</p>
-                    
-                    <!-- Progress bar -->
-                    <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
-                        <div class="bg-indigo-600 h-1.5 rounded-full" style="width: ${progress}%"></div>
-                    </div>
-                </div>
-                <button onclick="deleteProject('${project.projectId}'); event.stopPropagation();" 
-                    class="ml-4 text-gray-400 hover:text-red-500 transition-colors">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v.01a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v.01a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                    </svg>
-                </button>
-            </summary>
-            <div class="p-5 space-y-6 bg-gray-50 border-t border-gray-200">
-                <!-- Tasks Section -->
-                <div>
-                    <div class="flex items-center justify-between mb-4">
-                        <h4 class="font-medium text-gray-900 flex items-center">
-                            <svg class="w-5 h-5 mr-2 text-indigo-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
-                                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
-                            </svg>
-                            Tasks (${tasks.length})
-                        </h4>
-                        <button onclick="showAddTaskModal('${project.projectId}')" 
-                            class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                            </svg>
-                            Add Task
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${tasksHTML.length > 0 ? tasksHTML : 
-                          `<div class="col-span-2 bg-white p-6 rounded-lg border border-gray-200 text-center">
-                              <p class="text-gray-500">No tasks yet. Add your first task to get started.</p>
-                           </div>`}
-                    </div>
-                </div>
-
-                <!-- Team Members Section -->
-                <div>
-                    <div class="flex items-center justify-between mb-4">
-                        <h4 class="font-medium text-gray-900 flex items-center">
-                            <svg class="w-5 h-5 mr-2 text-indigo-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path>
-                            </svg>
-                            Team Members (${project.team.length})
-                        </h4>
-                        <button onclick="showAddMemberModal('${project.projectId}')" 
-                            class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
-                            </svg>
-                            Add Member
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        ${teamHTML.length > 0 ? teamHTML : 
-                          `<div class="col-span-3 bg-white p-6 rounded-lg border border-gray-200 text-center">
-                              <p class="text-gray-500">No team members yet. Add your first team member to collaborate.</p>
-                           </div>`}
-                    </div>
-                </div>
-            </div>
-        `;
-
+        const projectElement = await renderProject(project);
         container.appendChild(projectElement);
     }
 }
@@ -2075,7 +2114,6 @@ document.getElementById('projectForm').addEventListener('submit', async (e) => {
         closeCreateProjectModal();
         showToast('success', 'Project created successfully');
         renderProjectsAndTasks();
-        updateDashboardIfVisible();
     } catch (error) {
         console.error('Error creating project:', error);
         showToast('error', 'Failed to create project. Please try again.');
@@ -2400,7 +2438,7 @@ async function fetchUpdateTask(projectId, taskId, updateData) {
             
             // Immediately update UI for the client that made the change
             showToast('success', 'Task updated successfully');
-            renderProjectsAndTasks();
+            renderTask(taskId, projectId);
             
             // Update calendar if visible
             if (document.getElementById('calendarSection') && !document.getElementById('calendarSection').classList.contains('hidden')) {
@@ -2558,4 +2596,33 @@ function initializeSocketIO() {
     
     // Display connection status to user
     showToast('info', 'Real-time connection established');
+}
+
+// Function to fetch a single comment by ID
+async function fetchCommentById(projectId, taskId, commentId) {
+    const token = sessionStorage.getItem("sessionToken");
+
+    try {
+        // Join comment thread channel for this task if needed
+        commentsSocket.emit('join_comment_thread', taskId);
+        
+        const response = await fetch(`${BASE_URL}/api/projects/tasks/comments?projectId=${projectId}&taskId=${taskId}&commentId=${commentId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch comment');
+        }
+        
+        const data = await response.json();
+        return data.comment;
+    } catch (error) {
+        console.error(`Error fetching comment ${commentId}:`, error);
+        showToast('error', 'Failed to load comment');
+        return null;
+    }
 }
