@@ -4,7 +4,7 @@ import {
     checkSocketConnections, 
     updateConnectionStatus 
 } from './socket.js';
-import { renderProjectsAndTasks, renderProject } from './project.js';
+import { renderProjectPage, renderProject } from './project.js';
 import { renderCalendar } from './calendar.js';
 import { renderNotifications } from './notification.js';
 import { updateTaskStatuses } from './task.js';
@@ -88,7 +88,7 @@ function initializeEventListeners() {
         try {
             await createProject(projectData);
             closeCreateProjectModal();
-            renderProjectsAndTasks();
+            renderProjectPage();
         } catch (error) {
             console.error('Error creating project:', error);
         }
@@ -104,7 +104,7 @@ function initializeEventListeners() {
     document.getElementById('navProjects').addEventListener('click', async function (event) {
         event.preventDefault();
         showSection('projectsSection');
-        renderProjectsAndTasks();
+        renderProjectPage();
     });
 
     document.getElementById('navCalendar').addEventListener('click', function (event) {

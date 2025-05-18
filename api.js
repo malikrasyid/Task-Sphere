@@ -615,7 +615,7 @@ async function fetchUpdateProject(projectId, updateData) {
             
             // Immediately update UI for the client that made the change
             showToast('success', 'Project updated successfully');
-            renderProjectsAndTasks();
+            renderProjectPage();
             updateDashboardIfVisible();
             
             return await response.json();

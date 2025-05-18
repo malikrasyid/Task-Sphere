@@ -12,12 +12,12 @@ import { renderTasksFromProject, renderEachTask } from './task.js';
 // Function to render a single project's team members
 async function renderProjectTeam(team) {
     return (await Promise.all(
-        team.map(async member => renderEachProject(member.userId, member.role))
+        team.map(async member => renderTeamCard(member.userId, member.role))
     )).join('');
 }
 
 // Function to render a single team member card
-async function renderEachProject(memberId, role) {
+async function renderTeamCard(memberId, role) {
     const name = toTitleCase(await fetchUserById(memberId));
     return `
         <div class="bg-white rounded-lg border border-gray-200 shadow-sm flex items-center p-3 hover:shadow-md transition-shadow">
@@ -45,8 +45,8 @@ async function renderProject(projectId) {
     // Render team members
     const teamHTML = await renderProjectTeam(project.team);
     
-    // Get tasks (but don't use the pre-rendered HTML)
-    const { tasks } = await renderTasksFromProject(project.projectId);
+    // Get tasks with rendered HTML
+    const { tasks, html: tasksHTML } = await renderTasksFromProject(project.projectId);
     
     // Calculate project progress
     const completedTasks = tasks.filter(task => task.status === 'Done').length;
@@ -57,12 +57,13 @@ async function renderProject(projectId) {
         project,
         teamHTML,
         tasks,
+        tasksHTML,
         progress
     };
 }
 
 // Main function to render all projects and tasks
-async function renderProjectsAndTasks() {
+async function renderProjectPage() {
     const container = document.getElementById('projects-container');
     container.innerHTML = '';
 
@@ -131,7 +132,11 @@ async function renderProjectsAndTasks() {
                         </button>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Tasks will be rendered here -->
+                        ${projectData.tasks.length > 0 ? 
+                            projectData.tasksHTML : 
+                            `<div class="col-span-2 bg-white p-6 rounded-lg border border-gray-200 text-center">
+                                <p class="text-gray-500">No tasks yet. Add your first task to get started.</p>
+                             </div>`}
                     </div>
                 </div>
 
@@ -163,42 +168,12 @@ async function renderProjectsAndTasks() {
         `;
         
         container.appendChild(projectElement);
-
-        // Now render the tasks inside the tasks container
-        const tasksContainer = projectElement.querySelector(`#tasks-container-${projectId}`);
-        
-        if (projectData.tasks.length > 0) {
-            // Render each task separately and add to tasks container
-            for (const task of projectData.tasks) {
-                if (!task.id) {
-                    console.error('Task missing ID:', task);
-                    continue;
-                }
-                
-                try {
-                    const taskHTML = await renderEachTask(task.id, projectId);
-                    
-                    if (taskHTML) {
-                        const taskElement = document.createElement('div');
-                        taskElement.innerHTML = taskHTML;
-                        tasksContainer.appendChild(taskElement.firstChild);
-                    }
-                } catch (error) {
-                    console.error(`Error rendering task ${task.id}:`, error);
-                }
-            }
-        } else {
-            tasksContainer.innerHTML = `
-                <div class="col-span-2 bg-white p-6 rounded-lg border border-gray-200 text-center">
-                    <p class="text-gray-500">No tasks yet. Add your first task to get started.</p>
-                </div>`;
-        }
     }
 }
 
 export {
     renderProject,
-    renderProjectsAndTasks,
+    renderProjectPage,
     renderProjectTeam,
-    renderEachProject
+    renderTeamCard
 }; 
