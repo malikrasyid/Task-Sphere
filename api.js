@@ -12,6 +12,7 @@ import { renderProjectPage, renderProject } from './project.js';
 import { renderEachTask } from './task.js';
 import { renderCalendar } from './calendar.js';
 import { updateDashboardIfVisible } from './dashboard.js';
+import { renderComments } from './comment.js';
 
 // Fetch projects for a user
 async function fetchProjects() {
@@ -360,10 +361,10 @@ async function addComment(projectId, taskId, message) {
             action: 'add'
         });
         console.log(`Socket: Comment added to task ${taskId}`);
-        
+        await renderCommentFromComments(projectId, taskId, result.commentId);
+
         // Show toast notification
         showToast('success', 'Comment added successfully');
-        
         return result;
     } catch (error) {
         console.error('Error adding comment:', error);
@@ -402,6 +403,7 @@ async function deleteComment(projectId, taskId, commentId) {
             action: 'delete'
         });
         console.log(`Socket: Comment deleted from task ${taskId}`);
+        await renderComments(projectId, taskId);
         
         // Show toast notification
         showToast('success', 'Comment deleted successfully');
