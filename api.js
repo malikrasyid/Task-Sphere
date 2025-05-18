@@ -8,7 +8,7 @@ import {
     notificationsSocket 
 } from './socket.js';
 import { handleSessionExpired } from './auth.js';
-import { renderProjectsAndTasks, renderProject } from './project.js';
+import { renderProjectPage, renderProject } from './project.js';
 import { renderEachTask } from './task.js';
 import { renderCalendar } from './calendar.js';
 import { updateDashboardIfVisible } from './dashboard.js';

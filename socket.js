@@ -1,10 +1,10 @@
 import { WS_URL } from './config.js';
 import { showToast } from './ui.js';
-import { renderProjectsAndTasks, renderProject } from './project.js';
+import { renderProjectPage, renderProject } from './project.js';
 import { renderCalendar } from './calendar.js';
 import { renderDashboard, updateDashboardIfVisible } from './dashboard.js';
 import { renderNotifications, addNotificationToRecentActivity } from './notification.js';
-import { renderTask } from './task.js';
+import { renderEachTask } from './task.js';
 import { userProfile } from './auth.js';
 
 // Initialize Socket.IO connections
