@@ -23,23 +23,48 @@ async function renderEachComment(projectId, taskId, commentId) {
     `;
 }
 
+// Function to render task comments
 async function renderComments(projectId, taskId) {
-    const comments = await fetchCommentsFromTask(projectId, taskId) || [];
+    console.log('Rendering comments for task:', taskId, 'in project:', projectId);
     
-    return {
-        comments,
-        html: (await Promise.all(comments.map(comment => 
+    try {
+        const comments = await fetchCommentsFromTask(projectId, taskId) || [];
+        console.log('Comments received:', comments.length);
+        
+        if (comments.length === 0) {
+            return {
+                comments: [],
+                html: '<p class="text-gray-500 text-xs italic">No comments yet</p>'
+            };
+        }
+        
+        const commentsHTML = await Promise.all(comments.map(comment => 
             renderEachComment(projectId, taskId, comment.commentId)
-        ))).join('')
-    };
+        ));
+        
+        return {
+            comments,
+            html: commentsHTML.join('')
+        };
+    } catch (error) {
+        console.error('Error rendering comments:', error);
+        return {
+            comments: [],
+            html: '<p class="text-red-500 text-xs">Error loading comments</p>'
+        };
+    }
 }
 
 // Function to update comments container for a specific task
 async function updateTaskComments(projectId, taskId) {
+    console.log('Updating comments container for task:', taskId);
     const commentContainer = document.querySelector(`#task-${taskId} .comments-container`);
     if (commentContainer) {
-        const { html } = await fetchComments(projectId, taskId);
+        const { html } = await renderComments(projectId, taskId);
         commentContainer.innerHTML = html;
+        console.log('Comments updated in DOM');
+    } else {
+        console.error('Comment container not found for task:', taskId);
     }
 }
 

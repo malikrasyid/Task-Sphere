@@ -132,15 +132,31 @@ async function renderProjectsAndTasks() {
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         ${projectData.tasks.length > 0 ? 
-                            (await Promise.all(projectData.tasks.map(async (task) => {
-                                // Ensure we have a taskId, use the id property if available
-                                const taskId = task.id || task._id || task.taskId;
-                                if (!taskId) {
-                                    console.error('Task missing ID:', task);
-                                    return '';
+                            ((async () => {
+                                console.log('Project tasks to render:', projectData.tasks.length, 'for project:', projectData.project.projectId);
+                                
+                                try {
+                                    const taskPromises = projectData.tasks.map(async (task) => {
+                                        // Ensure we have a taskId, use the id property if available
+                                        const taskId = task.id || task._id || task.taskId;
+                                        if (!taskId) {
+                                            console.error('Task missing ID:', task);
+                                            return '';
+                                        }
+                                        console.log('Rendering task with ID:', taskId);
+                                        return await renderEachTask(taskId, projectData.project.projectId);
+                                    });
+                                    
+                                    const renderedTasks = await Promise.all(taskPromises);
+                                    console.log('Successfully rendered tasks:', renderedTasks.filter(t => t.length > 0).length);
+                                    return renderedTasks.join('');
+                                } catch (error) {
+                                    console.error('Error rendering tasks:', error);
+                                    return `<div class="col-span-2 bg-white p-6 rounded-lg border border-gray-200 text-center">
+                                              <p class="text-gray-500">Error rendering tasks. Check console for details.</p>
+                                           </div>`;
                                 }
-                                return await renderEachTask(taskId, projectData.project.projectId);
-                            }))).join('') : 
+                            })()) : 
                           `<div class="col-span-2 bg-white p-6 rounded-lg border border-gray-200 text-center">
                               <p class="text-gray-500">No tasks yet. Add your first task to get started.</p>
                            </div>`}

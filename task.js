@@ -13,8 +13,12 @@ import { showToast } from './ui.js';
 
 // Function to render a single task
 async function renderEachTask(taskId, projectId) {
+    console.log('Rendering task:', taskId, 'for project:', projectId);
+    
     // Fetch the task data
     const taskData = await fetchTaskFromTasks(projectId, taskId);
+    console.log('Task data received:', taskData);
+    
     if (!taskData) {
         console.error(`Failed to fetch task ${taskId}`);
         return '';
@@ -22,13 +26,15 @@ async function renderEachTask(taskId, projectId) {
     
     // Map task data to a clean structure
     const task = {
-        id: taskData.taskId,
-        name: taskData.name,
+        id: taskData.taskId || taskData.id || taskData._id,
+        name: taskData.name || 'Unnamed Task',
         deliverable: taskData.deliverable || '',
-        status: taskData.status,
+        status: taskData.status || 'Not Started',
         startDate: taskData.startDate,
         endDate: taskData.endDate
     };
+    
+    console.log('Mapped task:', task);
     
     // Get comments for the task
     const { comments, html: commentsHTML } = await renderComments(projectId, taskId);
@@ -95,17 +101,40 @@ async function renderEachTask(taskId, projectId) {
 
 // Function to render tasks for a project
 async function renderTasksFromProject(projectId) {
-    const tasks = await fetchTasksFromProject(projectId) || [];
+    console.log('Fetching tasks for project:', projectId);
     
-    // Generate HTML for all tasks
-    const tasksHTMLArray = await Promise.all(tasks.map(task => 
-        renderEachTask(task.taskId, projectId)
-    ));
-    
-    return {
-        tasks,
-        html: tasksHTMLArray.join('')
-    };
+    try {
+        const tasks = await fetchTasksFromProject(projectId) || [];
+        console.log('Tasks received:', tasks);
+        
+        // Generate HTML for all tasks
+        const tasksHTMLArray = await Promise.all(tasks.map(async (task) => {
+            // Get the task ID from the task object
+            const taskId = task.taskId || task.id || task._id;
+            if (!taskId) {
+                console.error('Task missing ID:', task);
+                return '';
+            }
+            
+            console.log('Processing task:', taskId);
+            return await renderEachTask(taskId, projectId);
+        }));
+        
+        console.log('Task HTML array length:', tasksHTMLArray.length);
+        
+        return {
+            tasks,
+            html: tasksHTMLArray.join('')
+        };
+    } catch (error) {
+        console.error('Error rendering tasks for project:', projectId, error);
+        return {
+            tasks: [],
+            html: `<div class="col-span-2 bg-white p-6 rounded-lg border border-gray-200 text-center">
+                <p class="text-gray-500">Error loading tasks. Please try again.</p>
+            </div>`
+        };
+    }
 }
 
 // Helper function to determine task status based on dates
