@@ -1,4 +1,4 @@
-import { SERVER_URL } from './config.js';
+import { WS_URL } from './config.js';
 import { showToast } from './ui.js';
 import { renderProjectsAndTasks, renderProject } from './project.js';
 import { renderCalendar } from './calendar.js';
@@ -8,11 +8,11 @@ import { renderTask } from './task.js';
 import { userProfile } from './auth.js';
 
 // Initialize Socket.IO connections
-const projectsSocket = io(`${SERVER_URL}/projects`);
-const tasksSocket = io(`${SERVER_URL}/tasks`);
-const usersSocket = io(`${SERVER_URL}/users`);
-const commentsSocket = io(`${SERVER_URL}/comments`);
-const notificationsSocket = io(`${SERVER_URL}/notifications`);
+const projectsSocket = io(`${WS_URL}/projects`);
+const tasksSocket = io(`${WS_URL}/tasks`);
+const usersSocket = io(`${WS_URL}/users`);
+const commentsSocket = io(`${WS_URL}/comments`);
+const notificationsSocket = io(`${WS_URL}/notifications`);
 
 // Force UI refresh function - call this when socket events are received
 function forceUIRefresh(type, action) {
