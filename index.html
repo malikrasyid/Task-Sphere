@@ -44,6 +44,16 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
+
+        /* Dropdown positioning */
+        #notifications-dropdown {
+            right: 0;
+            transform: translateX(0);
+        }
+        #profileDropdown {
+            right: 0;
+            transform: translateX(0);
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -137,15 +147,18 @@
         <div class="flex-1 lg:ml-64 flex flex-col">
             <!-- Header -->
             <header class="bg-white shadow-sm sticky top-0 z-20">
-                <div class="flex justify-between items-center px-4 py-3">
-                    <button id="sidebarToggle" class="lg:hidden text-gray-600 focus:outline-none">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                        </svg>
-                    </button>
+                <div class="relative flex items-center h-16 px-4">
+                    <div class="flex items-center flex-shrink-0">
+                        <button id="sidebarToggle" class="lg:hidden text-gray-600 focus:outline-none mr-3">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                            </svg>
+                        </button>
+                        <h1 class="text-xl font-semibold text-gray-800 hidden lg:block">Task Sphere</h1>
+                    </div>
                     
                     <!-- Right side controls -->
-                    <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-4 absolute right-4 top-1/2 transform -translate-y-1/2">
                         <!-- Notifications -->
                         <div class="relative">
                             <button id="notification-toggle" class="p-1 text-gray-500 rounded-full hover:bg-gray-100 focus:outline-none">

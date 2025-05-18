@@ -7,7 +7,7 @@ import {
     fetchUpdateProject 
 } from './api.js';
 import { formatDateUTC, toTitleCase } from './utils.js';
-import { renderTasksFromProject } from './task.js';
+import { renderTasksFromProject, renderEachTask } from './task.js';
 
 // Function to render a single project's team members
 async function renderProjectTeam(team) {
@@ -45,8 +45,8 @@ async function renderProject(projectId) {
     // Render team members
     const teamHTML = await renderProjectTeam(project.team);
     
-    // Render tasks
-    const { tasks, html: tasksHTML } = await renderTasksFromProject(project.projectId);
+    // Get tasks (but don't use the pre-rendered HTML)
+    const { tasks } = await renderTasksFromProject(project.projectId);
     
     // Calculate project progress
     const completedTasks = tasks.filter(task => task.status === 'Done').length;
@@ -56,7 +56,6 @@ async function renderProject(projectId) {
     return {
         project,
         teamHTML,
-        tasksHTML,
         tasks,
         progress
     };
@@ -132,7 +131,10 @@ async function renderProjectsAndTasks() {
                         </button>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${projectData.tasksHTML.length > 0 ? projectData.tasksHTML : 
+                        ${projectData.tasks.length > 0 ? 
+                            (await Promise.all(projectData.tasks.map(task => 
+                                renderEachTask(task.taskId, projectData.project.projectId)
+                            ))).join('') : 
                           `<div class="col-span-2 bg-white p-6 rounded-lg border border-gray-200 text-center">
                               <p class="text-gray-500">No tasks yet. Add your first task to get started.</p>
                            </div>`}
