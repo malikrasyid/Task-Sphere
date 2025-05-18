@@ -14,28 +14,6 @@ const usersSocket = io(`${WS_URL}/users`);
 const commentsSocket = io(`${WS_URL}/comments`);
 const notificationsSocket = io(`${WS_URL}/notifications`);
 
-// Force UI refresh function - call this when socket events are received
-function forceUIRefresh(type, action) {
-    console.log(`🔄 Force refreshing UI after ${type} ${action}`);
-    
-    // Refresh projects and tasks
-    renderProjectsAndTasks();
-    
-    // Refresh calendar if visible
-    if (document.getElementById('calendarSection') && !document.getElementById('calendarSection').classList.contains('hidden')) {
-        renderCalendar();
-    }
-    
-    // Refresh dashboard if visible
-    const dashboardSection = document.getElementById('dashboardSection');
-    if (dashboardSection && !dashboardSection.classList.contains('hidden')) {
-        renderDashboard();
-    }
-    
-    // Show toast notification
-    showToast('info', `${type} ${action}`);
-}
-
 // Projects socket events
 projectsSocket.on('connect', () => {
     console.log('🟢 Connected to projects namespace');
@@ -47,23 +25,10 @@ projectsSocket.on('disconnect', () => {
 
 projectsSocket.on('project_updated', (data) => {
     console.log('📣 Project update received:', data);
-    
-    // Always force refresh for any project update
-    let actionText = data.action === 'add' ? 'added' : 
-                    data.action === 'delete' ? 'deleted' : 
-                    data.action === 'add_member' ? 'member added' : 'updated';
-    
-    forceUIRefresh('Project', actionText);
 });
 
 projectsSocket.on('task_updated', (data) => {
-    console.log('📣 Task update received from projects namespace:', data);
-    
-    // Always force refresh for any task update
-    let actionText = data.action === 'add' ? 'added' : 
-                   data.action === 'delete' ? 'deleted' : 'updated';
-    
-    forceUIRefresh('Task', actionText);
+    console.log('📣 Task update received from projects namespace:', data); 
 });
 
 // Tasks socket events
@@ -78,11 +43,6 @@ tasksSocket.on('disconnect', () => {
 tasksSocket.on('task_updated', (data) => {
     console.log('📣 Task update received:', data);
     
-    // Always force refresh for any task update
-    let actionText = data.action === 'add' ? 'added' : 
-                   data.action === 'delete' ? 'deleted' : 'updated';
-    
-    forceUIRefresh('Task', actionText);
 });
 
 // Comments socket events
@@ -97,10 +57,6 @@ commentsSocket.on('disconnect', () => {
 commentsSocket.on('comment_updated', (data) => {
     console.log('📣 Comment update received:', data);
     
-    // Always force refresh for any comment update
-    let actionText = data.action === 'add' ? 'added' : 'deleted';
-    
-    forceUIRefresh('Comment', actionText);
 });
 
 // Users socket events
@@ -120,8 +76,6 @@ usersSocket.on('user_updated', (data) => {
         userProfile();
     }
     
-    // Always force a UI refresh for consistency
-    forceUIRefresh('User', 'updated');
 });
 
 // Notifications socket events
@@ -141,9 +95,6 @@ notificationsSocket.on('notification', (data) => {
     
     // Add notification at the top of recent activity
     addNotificationToRecentActivity(data);
-    
-    // Force UI refresh to ensure everything is updated
-    forceUIRefresh('Notification', 'received');
 });
 
 // Add a connection status indicator to the header

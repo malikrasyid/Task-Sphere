@@ -131,35 +131,7 @@ async function renderProjectsAndTasks() {
                         </button>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${projectData.tasks.length > 0 ? 
-                            ((async () => {
-                                console.log('Project tasks to render:', projectData.tasks.length, 'for project:', projectData.project.projectId);
-                                
-                                try {
-                                    const taskPromises = projectData.tasks.map(async (task) => {
-                                        // Ensure we have a taskId, use the id property if available
-                                        const taskId = task.id || task._id || task.taskId;
-                                        if (!taskId) {
-                                            console.error('Task missing ID:', task);
-                                            return '';
-                                        }
-                                        console.log('Rendering task with ID:', taskId);
-                                        return await renderEachTask(taskId, projectData.project.projectId);
-                                    });
-                                    
-                                    const renderedTasks = await Promise.all(taskPromises);
-                                    console.log('Successfully rendered tasks:', renderedTasks.filter(t => t.length > 0).length);
-                                    return renderedTasks.join('');
-                                } catch (error) {
-                                    console.error('Error rendering tasks:', error);
-                                    return `<div class="col-span-2 bg-white p-6 rounded-lg border border-gray-200 text-center">
-                                              <p class="text-gray-500">Error rendering tasks. Check console for details.</p>
-                                           </div>`;
-                                }
-                            })()) : 
-                          `<div class="col-span-2 bg-white p-6 rounded-lg border border-gray-200 text-center">
-                              <p class="text-gray-500">No tasks yet. Add your first task to get started.</p>
-                           </div>`}
+                        <!-- Tasks will be rendered here -->
                     </div>
                 </div>
 
@@ -191,6 +163,36 @@ async function renderProjectsAndTasks() {
         `;
         
         container.appendChild(projectElement);
+
+        // Now render the tasks inside the tasks container
+        const tasksContainer = projectElement.querySelector(`#tasks-container-${projectId}`);
+        
+        if (projectData.tasks.length > 0) {
+            // Render each task separately and add to tasks container
+            for (const task of projectData.tasks) {
+                if (!task.id) {
+                    console.error('Task missing ID:', task);
+                    continue;
+                }
+                
+                try {
+                    const taskHTML = await renderEachTask(task.id, projectId);
+                    
+                    if (taskHTML) {
+                        const taskElement = document.createElement('div');
+                        taskElement.innerHTML = taskHTML;
+                        tasksContainer.appendChild(taskElement.firstChild);
+                    }
+                } catch (error) {
+                    console.error(`Error rendering task ${task.id}:`, error);
+                }
+            }
+        } else {
+            tasksContainer.innerHTML = `
+                <div class="col-span-2 bg-white p-6 rounded-lg border border-gray-200 text-center">
+                    <p class="text-gray-500">No tasks yet. Add your first task to get started.</p>
+                </div>`;
+        }
     }
 }
 
