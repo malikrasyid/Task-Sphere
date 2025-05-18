@@ -361,6 +361,7 @@ async function addComment(projectId, taskId, message) {
             action: 'add'
         });
         console.log(`Socket: Comment added to task ${taskId}`);
+        await renderComments(projectId, taskId);
         await renderCommentFromComments(projectId, taskId, result.commentId);
 
         // Show toast notification
@@ -404,6 +405,7 @@ async function deleteComment(projectId, taskId, commentId) {
         });
         console.log(`Socket: Comment deleted from task ${taskId}`);
         await renderComments(projectId, taskId);
+        await renderCommentFromComments(projectId, taskId, commentId);
         
         // Show toast notification
         showToast('success', 'Comment deleted successfully');
