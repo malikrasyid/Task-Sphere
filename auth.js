@@ -69,16 +69,17 @@ async function signUp() {
         });
         const data = await response.json();
         if (response.ok) {
-            sessionStorage.setItem("userId", data.uid);
-            sessionStorage.setItem("sessionToken", data.sessionToken);
-            sessionStorage.setItem("userEmail", email);
-            
-            showMainSection();
+            showToast('success', 'Account created successfully! Please login.');
+            // Clear signup form
+            document.getElementById("signupForm").reset();
+            // Switch back to login form
+            toggleAuth();
         } else {
-            alert(data.error  || "Signup failed");
+            showToast('error', data.error || "Signup failed");
         }
     } catch (error) {
         console.error("Signup failed:", error);
+        showToast('error', "Signup failed. Please check your connection and try again.");
     }
 }
 

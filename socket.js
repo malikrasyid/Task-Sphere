@@ -5,7 +5,6 @@ import { renderCalendar } from './calendar.js';
 import { renderDashboard, updateDashboardIfVisible } from './dashboard.js';
 import { renderNotifications, addNotificationToRecentActivity } from './notification.js';
 import { renderEachTask } from './task.js';
-import { userProfile } from './auth.js';
 import { renderComments } from './comment.js';
 import eventBus from './event-bus.js';
 
@@ -91,10 +90,6 @@ usersSocket.on('user_updated', (data) => {
     console.log('📣 User update received:', data);
     eventBus.emit('user:updated', data);
     
-    // If current user was updated, refresh profile
-    if (data.userId === sessionStorage.getItem("userId")) {
-        userProfile();
-    }
 });
 
 // Notifications socket events
