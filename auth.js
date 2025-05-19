@@ -2,6 +2,7 @@ import { BASE_URL } from './config.js';
 import { showToast } from './ui.js';
 import { initializeSocketIO } from './socket.js';
 import { toTitleCase } from './utils.js';
+import { fetchUserById } from './api.js';
 
 let selectedUser = null;
 
