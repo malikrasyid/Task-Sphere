@@ -211,7 +211,7 @@ async function updateTaskStatuses() {
 
 async function markTaskAsDone(projectId, taskId) {
     try {
-        const result = await fetchUpdateTask(projectId, taskId, { status: 'Done' });
+        const result = await fetchUpdateTask(projectId, taskId, { status: "Done" });
         
         if (result) {
             // Send notification

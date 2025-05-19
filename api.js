@@ -724,8 +724,6 @@ async function fetchUpdateTask(projectId, taskId, updateData) {
     if (!token || !projectId || !taskId || !updateData) return;
     
     try {
-        // Only send status in request body
-        const requestBody = { status: updateData.status };
         
         const response = await fetch(`${BASE_URL}/api/projects/tasks?projectId=${projectId}&&taskId=${taskId}`, {
             method: 'PUT',
@@ -733,7 +731,9 @@ async function fetchUpdateTask(projectId, taskId, updateData) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify({
+                status: updateData.status,
+            })
         });
         
         if (response.ok) {
