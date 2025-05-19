@@ -25,11 +25,13 @@ async function login() {
             // Store all auth data in sessionStorage with consistent keys
             sessionStorage.setItem("sessionToken", data.token);
             sessionStorage.setItem("userId", data.userId);
-            sessionStorage.setItem("userFullName", `${data.firstName} ${data.lastName}`);
+            // Store full name from the response data
+            const fullName = data.name || `${data.firstName} ${data.lastName}`;
+            sessionStorage.setItem("userFullName", fullName);
             sessionStorage.setItem("userEmail", data.email || email);
 
             // Update header text to show user's name
-            document.querySelector('h1.text-xl.font-semibold.text-gray-800').textContent = `${data.firstName} ${data.lastName}`;
+            document.querySelector('h1.text-xl.font-semibold.text-gray-800').textContent = fullName;
 
             showToast('success', "Login successful");
             showMainSection();
