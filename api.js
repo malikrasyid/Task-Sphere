@@ -382,7 +382,7 @@ async function deleteComment(projectId, taskId, commentId) {
         return false;
     }
 
-    commentsSocket.emit('join_task_room', { projectId, taskId });
+    commentsSocket.emit('join_task', { projectId, taskId });
     
     try {
         const response = await fetch(`${BASE_URL}/api/projects/tasks/comments?projectId=${projectId}&&taskId=${taskId}&&commentId=${commentId}`, {
