@@ -139,20 +139,7 @@ function getAutoStatus(startDate, endDate) {
     if (now > end) return 'Overdue';
 }
 
-function updateCommentsInDOM(projectId, taskId, commentsHTML) {
-    // Select the container where comments are displayed
-    const commentsContainer = document.getElementById('comments-container');
-    
-    // If the container exists, update its content
-    if (commentsContainer) {
-        commentsContainer.innerHTML = commentsHTML;
-    } else {
-        console.error('Comments container not found in DOM');
-    }
-}
-
 export {
-    updateCommentsInDOM,
     formatDateUTC,
     toTitleCase,
     getTaskColor,

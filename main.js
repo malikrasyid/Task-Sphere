@@ -211,7 +211,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Initialize Socket.IO connections with a slight delay to ensure DOM is fully loaded
         setTimeout(() => {
             initializeSocketIO(); // Initialize Socket.IO connections
-            
+            setupSocketEventHandlers(); // Set up socket event handlers that update the DOM
+
             // Set up periodic socket connection check (every 30 seconds)
             setInterval(checkSocketConnections, 30 * 1000);
         }, 500);
@@ -244,6 +245,97 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(updateConnectionStatus, 1000);
 });
 
+function updateCommentsInDOM(projectId, taskId, commentsHTML) {
+    const commentsContainer = document.getElementById(`comments-container-${taskId}`);
+    
+    if (commentsContainer) {
+        commentsContainer.innerHTML = commentsHTML;
+    } else {
+        console.error(`Comments container for task ${taskId} not found in DOM`);
+    }
+}
+
+function setupSocketEventHandlers() {
+    // Comments socket event handlers
+    if (window.commentsSocket) {
+        window.commentsSocket.on('comment_deleted', async (data) => {
+            console.log('Received comment_deleted event:', data);
+            
+            const result = await renderComments(data.projectId, data.taskId);
+            updateCommentsInDOM(data.projectId, data.taskId, result.html);
+        });
+        
+        window.commentsSocket.on('comment_added', async (data) => {
+            console.log('Received comment_added event:', data);
+            
+            const result = await renderComments(data.projectId, data.taskId);
+            updateCommentsInDOM(data.projectId, data.taskId, result.html);
+        });
+        
+        window.commentsSocket.on('comment_updated', async (data) => {
+            console.log('Received comment_updated event:', data);
+            
+            const result = await renderComments(data.projectId, data.taskId);
+            updateCommentsInDOM(data.projectId, data.taskId, result.html);
+        });
+    }
+    
+    // Add other socket event handlers for tasks, projects, etc.
+    if (window.tasksSocket) {
+        window.tasksSocket.on('task_updated', async (data) => {
+            console.log('Received task_updated event:', data);
+            // Update the task in the DOM
+            await updateTaskInDOM(data.projectId, data.taskId);
+        });
+        
+        window.tasksSocket.on('task_deleted', async (data) => {
+            console.log('Received task_deleted event:', data);
+            // Remove the task from the DOM
+            removeTaskFromDOM(data.projectId, data.taskId);
+        });
+    }
+}
+
+// Function to update a specific task in the DOM
+async function updateTaskInDOM(projectId, taskId) {
+    try {
+        // Fetch the latest task data
+        const taskData = await fetchTaskData(projectId, taskId);
+        
+        // Find the task element in the DOM
+        const taskElement = document.getElementById(`task-${taskId}`);
+        
+        if (taskElement && taskData) {
+            // Update task details
+            const titleElement = taskElement.querySelector('.task-title');
+            if (titleElement) titleElement.textContent = taskData.title;
+            
+            const statusElement = taskElement.querySelector('.task-status');
+            if (statusElement) {
+                statusElement.textContent = taskData.status;
+                // Update status color/class if needed
+                updateStatusClass(statusElement, taskData.status);
+            }
+            
+            // Update other task properties as needed
+        } else {
+            console.error(`Task element for task ${taskId} not found in DOM`);
+        }
+    } catch (error) {
+        console.error(`Error updating task ${taskId} in DOM:`, error);
+    }
+}
+
+// Function to remove a task from the DOM
+function removeTaskFromDOM(projectId, taskId) {
+    const taskElement = document.getElementById(`task-${taskId}`);
+    if (taskElement) {
+        taskElement.remove();
+    } else {
+        console.error(`Task element for task ${taskId} not found in DOM`);
+    }
+}
+
 // Global functions that need to be exposed to the window object for inline event handlers
 window.showSection = showSection;
 window.markTaskAsDone = function(projectId, taskId) {
@@ -272,3 +364,12 @@ window.closeCreateProjectModal = closeCreateProjectModal;
 window.selectUser = selectUser;
 window.debounceSearch = debounceSearch;
 window.addMemberToProject = addMemberToProjectFromModal; 
+
+export {
+    updateCommentsInDOM,
+    setupSocketEventHandlers,
+    updateTaskInDOM,
+    removeTaskFromDOM
+};
+
+    
