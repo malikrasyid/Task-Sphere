@@ -381,6 +381,8 @@ async function deleteComment(projectId, taskId, commentId) {
     if (!confirm('Are you sure you want to delete this comment?')) {
         return false;
     }
+
+    commentsSocket.emit('join_task_room', { projectId, taskId });
     
     try {
         const response = await fetch(`${BASE_URL}/api/projects/tasks/comments?projectId=${projectId}&&taskId=${taskId}&&commentId=${commentId}`, {
@@ -396,7 +398,7 @@ async function deleteComment(projectId, taskId, commentId) {
         }
         
         // Emit to Socket.io about the deleted comment
-        commentsSocket.emit('comment_updated', {
+        socket.emit('comment_updated', {
             projectId,
             taskId,
             commentId,
@@ -405,7 +407,6 @@ async function deleteComment(projectId, taskId, commentId) {
         });
         console.log(`Socket: Comment deleted from task ${taskId}`);
         await renderComments(projectId, taskId);
-        await renderCommentFromComments(projectId, taskId, commentId);
         
         // Show toast notification
         showToast('success', 'Comment deleted successfully');

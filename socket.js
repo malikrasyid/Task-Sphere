@@ -59,6 +59,13 @@ commentsSocket.on('comment_updated', (data) => {
     
 });
 
+socket.on('comment_deleted', (data) => {
+    console.log('Received comment_deleted event:', data);
+    
+    // Update the UI to reflect the deleted comment
+    renderComments(data.projectId, data.taskId);
+});
+
 // Users socket events
 usersSocket.on('connect', () => {
     console.log('🟢 Connected to users namespace');
