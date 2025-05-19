@@ -724,7 +724,7 @@ async function fetchUpdateTask(projectId, taskId, updateData) {
     if (!token || !projectId || !taskId || !updateData) return;
     
     try {
-        
+        // Only send "Done" as the status value
         const response = await fetch(`${BASE_URL}/api/projects/tasks?projectId=${projectId}&&taskId=${taskId}`, {
             method: 'PUT',
             headers: {
@@ -732,7 +732,7 @@ async function fetchUpdateTask(projectId, taskId, updateData) {
                 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
-                status: updateData.status,
+                status: "Done"
             })
         });
         
