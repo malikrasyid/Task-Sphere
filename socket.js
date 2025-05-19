@@ -6,7 +6,8 @@ import { renderDashboard, updateDashboardIfVisible } from './dashboard.js';
 import { renderNotifications, addNotificationToRecentActivity } from './notification.js';
 import { renderEachTask } from './task.js';
 import { userProfile } from './auth.js';
-
+import { renderComments } from './comment.js';
+import { updateCommentsInDOM } from './utils.js';
 // Initialize Socket.IO connections
 const projectsSocket = io(`${WS_URL}/projects`);
 const tasksSocket = io(`${WS_URL}/tasks`);
@@ -59,11 +60,13 @@ commentsSocket.on('comment_updated', (data) => {
     
 });
 
-commentsSocket.on('comment_deleted', (data) => {
+commentsSocket.on('comment_deleted', async (data) => {
     console.log('Received comment_deleted event:', data);
     
     // Update the UI to reflect the deleted comment
     renderComments(data.projectId, data.taskId);
+    const result = await renderComments(data.projectId, data.taskId);
+    updateCommentsInDOM(data.projectId, data.taskId, result.html);
 });
 
 // Users socket events
