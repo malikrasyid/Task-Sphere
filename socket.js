@@ -59,7 +59,7 @@ commentsSocket.on('comment_updated', (data) => {
     
 });
 
-socket.on('comment_deleted', (data) => {
+commentsSocket.on('comment_deleted', (data) => {
     console.log('Received comment_deleted event:', data);
     
     // Update the UI to reflect the deleted comment
