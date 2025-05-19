@@ -721,20 +721,28 @@ async function deleteTask(projectId, taskId) {
 // Update a task
 async function fetchUpdateTask(projectId, taskId, updateData) {
     const token = sessionStorage.getItem("sessionToken");
-    if (!token || !projectId || !taskId || !updateData) return;
+    if (!token || !projectId || !taskId || !updateData) {
+        console.error('Missing required data:', { token: !!token, projectId, taskId, updateData });
+        return null;
+    }
     
     try {
-        // Only send "Done" as the status value
         const response = await fetch(`${BASE_URL}/api/projects/tasks?projectId=${projectId}&&taskId=${taskId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
             },
             body: JSON.stringify({
                 status: "Done"
             })
         });
+        
+        if (response.status === 403) {
+            showToast('error', 'You do not have permission to update this task');
+            return null;
+        }
         
         if (response.ok) {
             // Call Socket.io function after successful API call
@@ -747,11 +755,12 @@ async function fetchUpdateTask(projectId, taskId, updateData) {
             
             return await response.json();
         } else {
-            throw new Error('Failed to update task');
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to update task');
         }
     } catch (error) {
         console.error('Error updating task:', error);
-        showToast('error', 'Failed to update task');
+        showToast('error', error.message || 'Failed to update task');
         return null;
     }
 }
