@@ -60,13 +60,6 @@ commentsSocket.on('comment_updated', (data) => {
     
 });
 
-commentsSocket.on('comment_deleted', async (data) => {
-    console.log('Received comment_deleted event:', data);
-    
-    const result = await renderComments(data.projectId, data.taskId);
-    updateCommentsInDOM(data.projectId, data.taskId, result.html);
-});
-
 // Users socket events
 usersSocket.on('connect', () => {
     console.log('🟢 Connected to users namespace');
