@@ -28,7 +28,7 @@ import {
     deleteTask, 
     addComment, 
     deleteComment,
-    fetchTaskData
+    fetchUpdateTask
 } from './api.js';
 import { showSection, showToast } from './ui.js';
 import { renderComments } from './comment.js';
@@ -279,7 +279,7 @@ function setupEventHandlers() {
     // Task events
     eventBus.on('task:updated', async (data) => {
         console.log('Handling task:updated event:', data);
-        const taskData = await fetchTaskData(data.projectId, data.taskId);
+        const taskData = await fetchUpdateTask(data.projectId, data.taskId);
         updateTaskInDOM(data.projectId, data.taskId, taskData);
     });
     
