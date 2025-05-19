@@ -7,7 +7,7 @@ let selectedUser = null;
 async function login() {
     const action = "login";
     const email = document.getElementById("loginEmail").value;
-    const password = document.getElementById("loginPassword").value; // Added password field
+    const password = document.getElementById("loginPassword").value;
     
     if (!email || !password) {
         alert("Please enter both email and password");
@@ -25,10 +25,13 @@ async function login() {
             // Store all auth data in sessionStorage with consistent keys
             sessionStorage.setItem("sessionToken", data.token);
             sessionStorage.setItem("userId", data.userId);
-            sessionStorage.setItem("userName", data.name);
+            sessionStorage.setItem("userFullName", `${data.firstName} ${data.lastName}`);
             sessionStorage.setItem("userEmail", data.email || email);
 
-            showToast('success', "Login sukses");
+            // Update header text to show user's name
+            document.querySelector('h1.text-xl.font-semibold.text-gray-800').textContent = `${data.firstName} ${data.lastName}`;
+
+            showToast('success', "Login successful");
             showMainSection();
             initializeSocketIO(); // Initialize Socket.IO connections
 
@@ -97,13 +100,11 @@ function showMainSection() {
     document.getElementById('authSection').classList.add('hidden');
     document.getElementById('mainSection').classList.remove('hidden');
 
-    userProfile();
-}
-
-async function userProfile() {
-    const userName = toTitleCase(await fetchUserById(sessionStorage.getItem("userId")));
-    let profileNameElement = document.getElementById("profileName");
-    profileNameElement.textContent = userName;
+    // Update header with user's full name
+    const userFullName = sessionStorage.getItem("userFullName");
+    if (userFullName) {
+        document.querySelector('h1.text-xl.font-semibold.text-gray-800').textContent = userFullName;
+    }
 }
 
 function toggleAuth() {
@@ -153,7 +154,6 @@ export {
     logout, 
     handleSessionExpired, 
     showMainSection, 
-    userProfile, 
     toggleAuth,
     fetchUpdateUserProfile,
     selectedUser
