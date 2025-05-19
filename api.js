@@ -620,7 +620,6 @@ async function fetchUpdateProject(projectId, updateData) {
             // Immediately update UI for the client that made the change
             showToast('success', 'Project updated successfully');
             renderProjectPage();
-            updateDashboardIfVisible();
             
             return await response.json();
         } else {
@@ -725,13 +724,16 @@ async function fetchUpdateTask(projectId, taskId, updateData) {
     if (!token || !projectId || !taskId || !updateData) return;
     
     try {
+        // Only send status in request body
+        const requestBody = { status: updateData.status };
+        
         const response = await fetch(`${BASE_URL}/api/projects/tasks?projectId=${projectId}&&taskId=${taskId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify(updateData)
+            body: JSON.stringify(requestBody)
         });
         
         if (response.ok) {
