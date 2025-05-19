@@ -7,7 +7,8 @@ import { renderNotifications, addNotificationToRecentActivity } from './notifica
 import { renderEachTask } from './task.js';
 import { userProfile } from './auth.js';
 import { renderComments } from './comment.js';
-import { updateCommentsInDOM } from './main.js';
+import eventBus from './event-bus.js';
+
 // Initialize Socket.IO connections
 const projectsSocket = io(`${WS_URL}/projects`);
 const tasksSocket = io(`${WS_URL}/tasks`);
@@ -26,10 +27,12 @@ projectsSocket.on('disconnect', () => {
 
 projectsSocket.on('project_updated', (data) => {
     console.log('📣 Project update received:', data);
+    eventBus.emit('project:updated', data);
 });
 
 projectsSocket.on('task_updated', (data) => {
-    console.log('📣 Task update received from projects namespace:', data); 
+    console.log('📣 Task update received from projects namespace:', data);
+    eventBus.emit('task:updated', data);
 });
 
 // Tasks socket events
@@ -43,7 +46,12 @@ tasksSocket.on('disconnect', () => {
 
 tasksSocket.on('task_updated', (data) => {
     console.log('📣 Task update received:', data);
-    
+    eventBus.emit('task:updated', data);
+});
+
+tasksSocket.on('task_deleted', (data) => {
+    console.log('📣 Task deleted:', data);
+    eventBus.emit('task:deleted', data);
 });
 
 // Comments socket events
@@ -57,7 +65,17 @@ commentsSocket.on('disconnect', () => {
 
 commentsSocket.on('comment_updated', (data) => {
     console.log('📣 Comment update received:', data);
-    
+    eventBus.emit('comment:updated', data);
+});
+
+commentsSocket.on('comment_deleted', (data) => {
+    console.log('📣 Comment deleted:', data);
+    eventBus.emit('comment:deleted', data);
+});
+
+commentsSocket.on('comment_added', (data) => {
+    console.log('📣 Comment added:', data);
+    eventBus.emit('comment:added', data);
 });
 
 // Users socket events
@@ -71,12 +89,12 @@ usersSocket.on('disconnect', () => {
 
 usersSocket.on('user_updated', (data) => {
     console.log('📣 User update received:', data);
+    eventBus.emit('user:updated', data);
     
     // If current user was updated, refresh profile
     if (data.userId === sessionStorage.getItem("userId")) {
         userProfile();
     }
-    
 });
 
 // Notifications socket events
@@ -90,6 +108,7 @@ notificationsSocket.on('disconnect', () => {
 
 notificationsSocket.on('notification', (data) => {
     console.log('📣 Notification received:', data);
+    eventBus.emit('notification:received', data);
     
     // Refresh notifications immediately
     renderNotifications();
