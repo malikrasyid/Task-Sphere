@@ -398,7 +398,7 @@ async function deleteComment(projectId, taskId, commentId) {
         }
         
         // Emit to Socket.io about the deleted comment
-        commentsSocket.emit('comment_updated', {
+        commentsSocket.emit('comment_deleted', {
             projectId,
             taskId,
             commentId,
