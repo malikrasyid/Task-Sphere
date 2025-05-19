@@ -28,7 +28,7 @@ async function login() {
             sessionStorage.setItem("userId", data.userId);
             sessionStorage.setItem("userEmail", data.email || email);
 
-            const fullName = toTitleCase(await fetchUserById(data.userId));
+            const fullName = toTitleCase(await fetchUserById(sessionStorage.getItem("userId")));
 
             // Update header text to show user's name
             document.querySelector('h1.text-xl.font-semibold.text-gray-800').textContent = fullName;
