@@ -7,14 +7,6 @@ async function initializeDashboard() {
     renderDashboard();
 }
 
-// Update dashboard if it's currently visible
-function updateDashboardIfVisible() {
-    const dashboardSection = document.getElementById('dashboardSection');
-    if (dashboardSection && !dashboardSection.classList.contains('hidden')) {
-        renderDashboard();
-    }
-}
-
 // Main dashboard rendering function
 async function renderDashboard() {
     console.log('Rendering dashboard...');
@@ -326,5 +318,4 @@ function renderRecentTasks(tasks, projects) {
 export {
     initializeDashboard,
     renderDashboard,
-    updateDashboardIfVisible
 }; 

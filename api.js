@@ -744,13 +744,6 @@ async function fetchUpdateTask(projectId, taskId, updateData) {
             showToast('success', 'Task updated successfully');
             renderEachTask(taskId, projectId);
             
-            // Update calendar if visible
-            if (document.getElementById('calendarSection') && !document.getElementById('calendarSection').classList.contains('hidden')) {
-                renderCalendar();
-            }
-            
-            updateDashboardIfVisible();
-            
             return await response.json();
         } else {
             throw new Error('Failed to update task');

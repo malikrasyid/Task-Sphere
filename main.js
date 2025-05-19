@@ -234,23 +234,23 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show dashboard by default
         showSection('dashboardSection');
         initializeDashboard();
+        
+        // Initialize notifications only for logged-in users
+        renderNotifications();
+        
+        // Set up periodic refresh for notifications (every 60 seconds)
+        setInterval(renderNotifications, 60000);
+        
+        // Initialize status indicator
+        initializeStatusIndicator();
+        
+        // Set interval to check WebSocket status
+        setInterval(updateConnectionStatus, 1000);
     } else {
         // User is not logged in, show auth section
         document.getElementById('authSection').classList.remove('hidden');
         document.getElementById('mainSection').classList.add('hidden');
     }
-
-    // Initialize notifications
-    renderNotifications();
-    
-    // Set up periodic refresh for notifications (every 60 seconds)
-    setInterval(renderNotifications, 60000);
-    
-    // Initialize status indicator
-    initializeStatusIndicator();
-    
-    // Set interval to check WebSocket status
-    setInterval(updateConnectionStatus, 1000);
 });
 
 /**
