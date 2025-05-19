@@ -11,7 +11,6 @@ import { handleSessionExpired } from './auth.js';
 import { renderProjectPage, renderProject } from './project.js';
 import { renderEachTask } from './task.js';
 import { renderCalendar } from './calendar.js';
-import { updateDashboardIfVisible } from './dashboard.js';
 import { renderComments } from './comment.js';
 
 // Fetch projects for a user
