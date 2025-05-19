@@ -1,6 +1,7 @@
 import { BASE_URL } from './config.js';
 import { showToast } from './ui.js';
 import { initializeSocketIO } from './socket.js';
+import { toTitleCase } from './utils.js';
 
 let selectedUser = null;
 
@@ -25,10 +26,9 @@ async function login() {
             // Store all auth data in sessionStorage with consistent keys
             sessionStorage.setItem("sessionToken", data.token);
             sessionStorage.setItem("userId", data.userId);
-            // Store full name from the response data
-            const fullName = data.name || `${data.firstName} ${data.lastName}`;
-            sessionStorage.setItem("userFullName", fullName);
             sessionStorage.setItem("userEmail", data.email || email);
+
+            const fullName = toTitleCase(await fetchUserById(data.userId));
 
             // Update header text to show user's name
             document.querySelector('h1.text-xl.font-semibold.text-gray-800').textContent = fullName;
